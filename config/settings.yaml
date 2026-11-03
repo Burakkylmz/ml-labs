@@ -1,0 +1,15 @@
+# General project configuration for ml-labs.
+# Do not add API keys, passwords, or tokens here; use environment variables instead.
+
+project_name: ml-labs
+random_seed: 42
+dataset_dir: data
+lab_dir: labs
+log_level: INFO
+
+data:
+  ecommerce_shipping: data/ecommerce_shipping/Train.csv
+  northwind:
+    customers: data/northwind/customers.csv
+    orders: data/northwind/orders.csv
+    shippers: data/northwind/shippers.csv

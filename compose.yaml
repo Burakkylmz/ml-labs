@@ -1,0 +1,8 @@
+services:
+  ml-lab:
+    build: .
+    container_name: ml-lab
+    ports:
+      - "127.0.0.1:8888:8888"
+    volumes:
+      - .:/app
