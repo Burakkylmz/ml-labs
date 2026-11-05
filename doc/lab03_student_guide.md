@@ -120,7 +120,36 @@ ml-labs/
 
 ---
 
-## 5. Running the LAB with Docker
+## 5. Cloning the Repository from GitHub
+
+> **LAB02'yi zaten tamamladıysanız** ve `ml-labs/` klasörünüz bilgisayarınızda halihazırda varsa, bu
+> adımı atlayabilirsiniz — doğrudan bu klasörün içinde `git pull` çalıştırarak LAB03 dosyalarının (ve
+> varsa diğer güncellemelerin) güncel sürümünü alabilirsiniz, ardından Bölüm 6'ya geçin.
+
+Projeyi ilk kez kendi bilgisayarınıza alıyorsanız, GitHub üzerinden clone edin.
+
+1. Bir terminal açın.
+2. Projeyi klonlamak istediğiniz klasöre gidin (örn. `cd Documents`).
+3. Aşağıdaki komutu çalıştırın:
+
+   ```bash
+   git clone https://github.com/Burakkylmz/ml-labs.git
+   ```
+
+4. Oluşan `ml-labs` klasörüne girin:
+
+   ```bash
+   cd ml-labs
+   ```
+
+5. Bölüm 3'te indirdiğiniz dataset dosyasını, Bölüm 4'te gösterilen klasör yapısına göre bu klasörün
+   içine yerleştirin (`data/ecommerce_shipping/Train.csv`).
+6. Bu rehberin kalan adımlarını (Docker ile çalıştırma dahil) her zaman bu `ml-labs/` klasörünün içinden
+   çalıştıracaksınız.
+
+---
+
+## 6. Running the LAB with Docker
 
 1. Bir terminal açın ve proje kök dizinine (`ml-labs/`) geçin.
 2. **Docker Desktop'ın çalışır durumda olduğundan emin olun** (sistem tepsisindeki Docker ikonu "running"
@@ -166,7 +195,7 @@ ml-labs/
 
 ---
 
-## 6. Accessing JupyterLab
+## 7. Accessing JupyterLab
 
 Bu projede JupyterLab, `127.0.0.1:8888` portu üzerinden **yalnızca kendi bilgisayarınızdan (localhost)**
 erişilebilir şekilde yapılandırılmıştır.
@@ -191,7 +220,7 @@ erişilebilir şekilde yapılandırılmıştır.
 
 ---
 
-## 7. Working with Notebook Cells
+## 8. Working with Notebook Cells
 
 Bir Jupyter notebook (`.ipynb`), iki tür hücreden oluşur:
 
@@ -221,7 +250,7 @@ hücrenin altında görüntülenir — bu davranış, Docker kullanılmasa da ay
 
 ---
 
-## 8. LAB Sections
+## 9. LAB Sections
 
 Notebook, aşağıdaki sırayla ilerler:
 
@@ -246,7 +275,7 @@ süreye dahil değildir ve tamamlanmamaları notebook'un çalışmasını etkile
 
 ---
 
-## 9. Stopping the LAB
+## 10. Stopping the LAB
 
 Çalışmanız bittiğinde container'ları durdurmak için:
 
@@ -269,7 +298,7 @@ doğrudan kendi bilgisayarınızdaki dosyalar olduğu anlamına gelir.
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Problem | Çözüm |
 |---|---|
@@ -281,4 +310,4 @@ doğrudan kendi bilgisayarınızdaki dosyalar olduğu anlamına gelir.
 | **Yanlış Notebook Kernel** | Bu container içinde tek bir Python ortamı (`Python 3 (ipykernel)`) bulunur. Notebook sağ üstte farklı bir kernel adı gösteriyorsa, **Kernel → Change Kernel** menüsünden `Python 3 (ipykernel)`'i seçin. |
 | **Python `ModuleNotFoundError`** | Tüm bağımlılıklar `Dockerfile` build aşamasında kurulur; bu hata genellikle image'ın güncel bağımlılıklarla yeniden build edilmediğini gösterir. `docker compose up --build -d` komutunu `--build` bayrağıyla tekrar çalıştırın. |
 | **LaTeX formülleri (Markdown hücrelerinde) düzgün görünmüyor** | Sayfayı yenileyin (F5) ve notebook'un tamamen yüklenmesini bekleyin; JupyterLab, MathJax kütüphanesini ilk açılışta yüklediği için formüllerin render edilmesi birkaç saniye sürebilir. |
-| **Notebook değişiklikleri kaydedilemiyor** | Bölüm 9'da açıklanan bind mount sayesinde kaydetme normalde sorunsuz çalışır. Kaydetme başarısız oluyorsa, tarayıcı sekmesini yenileyin (F5) ve `Ctrl + S` ile tekrar deneyin; sorun sürerse `docker compose logs ml-lab` ile container loglarını kontrol edin. |
+| **Notebook değişiklikleri kaydedilemiyor** | Bölüm 10'da açıklanan bind mount sayesinde kaydetme normalde sorunsuz çalışır. Kaydetme başarısız oluyorsa, tarayıcı sekmesini yenileyin (F5) ve `Ctrl + S` ile tekrar deneyin; sorun sürerse `docker compose logs ml-lab` ile container loglarını kontrol edin. |

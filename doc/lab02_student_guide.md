@@ -143,7 +143,35 @@ ml-labs/
 
 ---
 
-## 5. Running the LAB with Docker
+## 5. Cloning the Repository from GitHub
+
+Projeyi kendi bilgisayarınıza almak için GitHub üzerinden clone edin.
+
+1. Bir terminal açın.
+2. Projeyi klonlamak istediğiniz klasöre gidin (örn. `cd Documents`).
+3. Aşağıdaki komutu çalıştırın:
+
+   ```bash
+   git clone https://github.com/Burakkylmz/ml-labs.git
+   ```
+
+4. Oluşan `ml-labs` klasörüne girin:
+
+   ```bash
+   cd ml-labs
+   ```
+
+5. Bölüm 3'te indirdiğiniz dataset dosyalarını, Bölüm 4'te gösterilen klasör yapısına göre bu klasörün
+   içine yerleştirin (örn. `data/ecommerce_shipping/Train.csv`, `data/northwind/customers.csv` vb.).
+6. Bu rehberin kalan adımlarını (Docker ile çalıştırma dahil) her zaman bu `ml-labs/` klasörünün içinden
+   çalıştıracaksınız.
+
+> Projeyi daha önce klonladıysanız ve güncellemeleri almak istiyorsanız, `ml-labs/` klasörü içinde
+> `git pull` komutunu çalıştırabilirsiniz — tekrar `git clone` yapmanıza gerek yoktur.
+
+---
+
+## 6. Running the LAB with Docker
 
 1. Bir terminal açın ve proje kök dizinine (`ml-labs/`) geçin.
 2. **Docker Desktop'ın çalışır durumda olduğundan emin olun** (sistem tepsisindeki Docker ikonu "running"
@@ -186,7 +214,7 @@ ml-labs/
 
 ---
 
-## 6. Accessing JupyterLab
+## 7. Accessing JupyterLab
 
 Bu projede JupyterLab, `127.0.0.1:8888` portu üzerinden **yalnızca kendi bilgisayarınızdan (localhost)**
 erişilebilir şekilde yapılandırılmıştır.
@@ -211,7 +239,7 @@ erişilebilir şekilde yapılandırılmıştır.
 
 ---
 
-## 7. Working with Notebook Cells
+## 8. Working with Notebook Cells
 
 Bir Jupyter notebook (`.ipynb`), iki tür hücreden oluşur:
 
@@ -239,7 +267,7 @@ hücrenin altında görüntülenir — bu davranış, Docker kullanılmasa da ay
 
 ---
 
-## 8. LAB Sections
+## 9. LAB Sections
 
 Notebook, aşağıdaki sırayla ilerler:
 
@@ -257,7 +285,7 @@ Notebook, aşağıdaki sırayla ilerler:
 
 ---
 
-## 9. Stopping the LAB
+## 10. Stopping the LAB
 
 Çalışmanız bittiğinde container'ları durdurmak için:
 
@@ -280,7 +308,7 @@ doğrudan kendi bilgisayarınızdaki dosyalar olduğu anlamına gelir.
 
 ---
 
-## 10. Troubleshooting
+## 11. Troubleshooting
 
 | Problem | Çözüm |
 |---|---|
@@ -291,4 +319,4 @@ doğrudan kendi bilgisayarınızdaki dosyalar olduğu anlamına gelir.
 | **Dataset `FileNotFoundError`** | Notebook, ilgili CSV dosyasını bulamadığında bu hatayı fırlatır. `data/ecommerce_shipping/Train.csv` ve `data/northwind/{customers,orders,shippers}.csv` dosyalarının Bölüm 3'teki adımlara göre doğru konumda olduğunu kontrol edin. |
 | **Yanlış Notebook Kernel** | Bu container içinde tek bir Python ortamı (`Python 3 (ipykernel)`) bulunur. Notebook sağ üstte farklı bir kernel adı gösteriyorsa, **Kernel → Change Kernel** menüsünden `Python 3 (ipykernel)`'i seçin. |
 | **Python `ModuleNotFoundError`** | Tüm bağımlılıklar `Dockerfile` build aşamasında kurulur; bu hata genellikle image'ın güncel bağımlılıklarla yeniden build edilmediğini gösterir. `docker compose up --build -d` komutunu `--build` bayrağıyla tekrar çalıştırın. |
-| **Notebook değişiklikleri kaydedilemiyor** | Bölüm 9'da açıklanan bind mount sayesinde kaydetme normalde sorunsuz çalışır. Kaydetme başarısız oluyorsa, tarayıcı sekmesini yenileyin (F5) ve `Ctrl + S` ile tekrar deneyin; sorun sürerse `docker compose logs ml-lab` ile container loglarını kontrol edin. |
+| **Notebook değişiklikleri kaydedilemiyor** | Bölüm 10'da açıklanan bind mount sayesinde kaydetme normalde sorunsuz çalışır. Kaydetme başarısız oluyorsa, tarayıcı sekmesini yenileyin (F5) ve `Ctrl + S` ile tekrar deneyin; sorun sürerse `docker compose logs ml-lab` ile container loglarını kontrol edin. |
