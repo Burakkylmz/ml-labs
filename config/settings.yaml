@@ -13,3 +13,12 @@ data:
     customers: data/northwind/customers.csv
     orders: data/northwind/orders.csv
     shippers: data/northwind/shippers.csv
+
+lab05:
+  target: Freight
+  random_seed: 42
+
+lab06:
+  target: Reached.on.Time_Y.N
+  positive_class: 1
+  random_seed: 42
