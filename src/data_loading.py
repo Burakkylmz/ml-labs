@@ -39,3 +39,9 @@ def load_northwind_orders(config: dict) -> pd.DataFrame:
     """Load the Northwind orders dataset using the path from config."""
     csv_path = get_project_root() / config["data"]["northwind"]["orders"]
     return pd.read_csv(require_file(csv_path))
+
+
+def load_king_county_house_sales(config: dict) -> pd.DataFrame:
+    """Load the King County House Sales dataset using the path from config."""
+    csv_path = get_project_root() / config["data"]["king_county_house_sales"]
+    return pd.read_csv(require_file(csv_path))

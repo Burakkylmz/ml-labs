@@ -13,6 +13,7 @@ data:
     customers: data/northwind/customers.csv
     orders: data/northwind/orders.csv
     shippers: data/northwind/shippers.csv
+  king_county_house_sales: data/king_county_house_sales/kc_house_data.csv
 
 lab05:
   target: Freight
@@ -21,4 +22,8 @@ lab05:
 lab06:
   target: Reached.on.Time_Y.N
   positive_class: 1
+  random_seed: 42
+
+lab05_capstone:
+  target: price
   random_seed: 42
