@@ -1,5 +1,11 @@
 FROM python:3.11-slim
 
+# LightGBM's PyPI wheel dynamically links against libgomp (OpenMP) at import time,
+# which python:3.11-slim does not ship.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
+    && rm -rf /var/lib/apt/lists/*
+
 # Pin uv to the same version used to generate uv.lock locally.
 COPY --from=ghcr.io/astral-sh/uv:0.11.7 /uv /uvx /usr/local/bin/
 
