@@ -75,3 +75,9 @@ def load_dataco_supply_chain(config: dict) -> pd.DataFrame:
     header = pd.read_csv(csv_path, encoding="latin-1", nrows=0).columns.tolist()
     safe_columns = [c for c in header if c not in DATACO_PII_COLUMNS]
     return pd.read_csv(csv_path, encoding="latin-1", usecols=safe_columns)
+
+
+def load_bike_sharing_daily(config: dict) -> pd.DataFrame:
+    """Load the daily Bike Sharing dataset (day.csv). No PII in this dataset."""
+    csv_path = get_project_root() / config["data"]["bike_sharing_daily"]
+    return pd.read_csv(require_file(csv_path))

@@ -1,0 +1,17 @@
+# LAB12 — Stage 05 Leakage Risk Register
+
+| Risk_ID | Risk | Mechanism | Potential_Impact | Detection | Mitigation | Residual_Risk | Status |
+|---|---|---|---|---|---|---|---|
+| R-01 | Random chronological mixing | Shuffled train/test split | Future info leaks into training | Notebook Section 04 educational counter-example | `assign_split()` is purely chronological | None — structurally prevented | Closed |
+| R-02 | Shipment group duplication across splits | Same ASN/DN in >1 split | Group leakage, inflated validation score | `train_keys & validation_keys` etc. | Explicit set-intersection asserts (Section 08) | None — verified 0 overlap | Closed |
+| R-03 | Cost-anchor sharing across shipments | Different ASN/DN referencing the same cost event | Independence violation | Stage 03.5 reference resolution | 0 cross-shipment resolutions found | None — verified | Closed |
+| R-04 | Target-derived features | Feature computed from Freight_Cost_USD | Trivial leakage into model | Code review discipline | None created in Stage 01-05; rule carried forward | Low — depends on Stage 06-07 discipline | Open |
+| R-05 | Post-shipment features | Delivered/Recorded Date used as input | Label-adjacent leakage | Stage 01-03 feature availability audit | Those fields remain classified Unavailable | Low — depends on Stage 07 discipline | Open |
+| R-06 | Global preprocessing fit | Scaler/encoder fit on all data before CV | Validation/test information leaks into fit parameters | Code review, pipeline inspection | Stage 06 contract mandates fold-only fitting (Section 15) | Medium — depends on Stage 06 implementation | Open |
+| R-07 | Validation reuse / adaptive overfitting | Repeated peeking at 2014 scores | Overfits to Validation set | Model Selection Budget tracking | Training-only CV through Stage 10; 2014 reserved for Stage 11 | Medium — depends on Stage 06-10 discipline | Open |
+| R-08 | Test peeking | Reading 2015 target values pre-Stage-14 | Invalidates final evaluation | Explicit grep/assert checks on this notebook's cells | No Test target read verified (Section 08/13) | Low — raw file remains physically accessible | Open (process control) |
+| R-09 | Temporal label availability uncertainty | No real settlement timestamp exists | Point-in-time correctness unprovable | Mandatory timestamp audit (Section 11) | D-007 kept Conditional; documented explicitly | High — fundamentally unresolved with current data | Open |
+| R-10 | Scheduled Delivery Date as proxy | Technical validity != business validity | Same root cause as R-09 | Section 07/11 explicit distinction | Labeled as proxy everywhere it is used | High — same as R-09 | Open |
+| R-11 | Conditional target availability (INCOTERM-driven selection bias) | Numeric-target population differs from full population | Model deployment coverage gap | Stage 03.5/04 segment comparison | Documented, carried into evaluation design requirement | Medium — must be monitored in Stage 06+ | Open |
+| R-12 | Cross-validation grouping mistakes | Forgetting group-awareness in a future CV redesign | Silent leakage reintroduction | `create_expanding_cv_folds()` group-overlap assertion | Function asserts 0 overlap on every call | Low — depends on future code reuse discipline | Open |
+| R-13 | Partial-year 2015 misinterpretation | Treating 2015 as a full year in Stage 14 | Misleading final test metrics | Monthly coverage chart (Section 07) | `test_end_policy: last_observed_date`, documented explicitly | Medium — must be respected in Stage 14 | Open |

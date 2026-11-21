@@ -15,6 +15,8 @@ data:
     shippers: data/northwind/shippers.csv
   king_county_house_sales: data/king_county_house_sales/kc_house_data.csv
   dataco_supply_chain: data/dataco_supply_chain/DataCoSupplyChainDataset.csv
+  bike_sharing_daily: data/bike_sharing/day.csv
+  bike_sharing_hourly: data/bike_sharing/hour.csv
 
 lab05:
   target: Freight
@@ -165,3 +167,255 @@ lab09:
     save_cv_results: true
     save_environment_metadata: true
     save_dataset_hash: true
+
+lab10:
+  target:
+    column: cnt
+    date_column: dteday
+    frequency: D
+
+  forecasting:
+    horizon: 14
+    seasonal_period: 7
+    moving_average_window: 7
+
+  split:
+    training_start: "2011-01-01"
+    training_end: "2012-08-31"
+    validation_start: "2012-09-01"
+    validation_end: "2012-10-31"
+    test_start: "2012-11-01"
+    test_end: "2012-12-31"
+
+  backtesting:
+    strategy: expanding_window
+    horizon: 14
+    step_size: 14
+    number_of_origins: 4
+
+  evaluation:
+    metrics: [mae, rmse, wape, mase]
+    mase_scaling: fixed_initial_training
+    protect_test_set: true
+
+  artifacts:
+    directory: labs/lab10/artifacts
+
+lab11:
+  dataset_path: data/bike_sharing/day.csv
+
+  target:
+    column: cnt
+    date_column: dteday
+    frequency: D
+
+  forecasting:
+    horizon: 14
+    seasonal_period: 7
+    strategy: recursive
+
+  features:
+    lags: [1, 7, 14, 28]
+    rolling_mean: [7, 14]
+    rolling_std: [7]
+    rolling_min: [7]
+    rolling_max: [7]
+    calendar:
+      day_of_week: true
+      month: true
+      quarter: true
+      is_weekend: true
+      cyclical_encoding: true
+
+  models:
+    ridge:
+      alpha: 10.0
+    random_forest:
+      n_estimators: 100
+      max_depth: 8
+      min_samples_leaf: 3
+    xgboost:
+      n_estimators: 100
+      max_depth: 3
+      learning_rate: 0.05
+      subsample: 0.9
+      colsample_bytree: 0.9
+      tree_method: hist
+    lightgbm:
+      n_estimators: 100
+      learning_rate: 0.05
+      max_depth: 4
+      num_leaves: 15
+      min_child_samples: 20
+
+  benchmark:
+    threads: 2
+    ranking_metric: pooled_mae
+    measure_training_time: true
+    measure_inference_time: true
+
+  evaluation:
+    metrics: [mae, rmse, wape, mase, forecast_bias]
+    mase_scaling: fixed_initial_training
+    protect_test_set: true
+
+  artifacts:
+    directory: labs/lab11/artifacts
+
+lab12:
+  dataset:
+    directory: data/freight_cost
+    filename_pattern: "SCMS_Delivery_History_Dataset*"
+    target_column: Freight Cost (USD)
+    weight_column: Weight (Kilograms)
+    encoding: latin-1
+
+  qualification:
+    enable_target_audit: true
+    enable_granularity_audit: true
+    enable_selection_bias_analysis: true
+    enable_temporal_feasibility_analysis: true
+
+  artifacts:
+    directory: labs/lab12/artifacts
+
+  stage03_5:
+    enabled: true
+
+    grouping:
+      primary_key: "ASN/DN #"
+
+    reference_resolution:
+      validate_anchor_id: true
+      validate_shipment_key: true
+      allow_unresolved_references: false
+
+    qualification:
+      evaluate_row_coverage: true
+      evaluate_shipment_coverage: true
+      evaluate_selection_bias: true
+      evaluate_aggregation_semantics: true
+      evaluate_prediction_time_availability: true
+
+    figures:
+      enabled: true
+      directory: "labs/lab12/artifacts/figures/stage03_5"
+
+  stage04:
+    enabled: true
+
+    eda:
+      temporal_field: "Scheduled Delivery Date"
+      cutoff_date: "2013-12-31"
+      enforce_target_isolation: true
+      protect_future_target: true
+
+    statistics:
+      quantiles: [0.01, 0.05, 0.10, 0.25, 0.50, 0.75, 0.90, 0.95, 0.99]
+      correlation_methods: [pearson, spearman]
+      bootstrap:
+        enabled: true
+        n_resamples: 1000
+        random_seed: 42
+
+    visualization:
+      enabled: true
+      save_figures: true
+      directory: "labs/lab12/artifacts/figures/stage04"
+
+    artifacts:
+      directory: "labs/lab12/artifacts"
+
+  stage05:
+    enabled: true
+
+    split:
+      temporal_field: "Scheduled Delivery Date"
+      train_end: "2013-12-31"
+      validation_start: "2014-01-01"
+      validation_end: "2014-12-31"
+      test_start: "2015-01-01"
+      test_end_policy: "last_observed_date"
+      preserve_stage04_eda_cutoff: true
+      assign_before_target_filtering: true
+      protect_test_target: true
+
+    grouping:
+      primary_key: "ASN/DN #"
+      enforce_group_isolation: true
+      verify_cost_anchor_dependencies: true
+
+    cross_validation:
+      strategy: "expanding_window"
+      candidate_validation_years: [2010, 2011, 2012, 2013]
+      calendar_aware: true
+      enforce_group_isolation: true
+
+    temporal_gap:
+      policy: "conditional"
+      require_label_availability_review: true
+
+    evaluation:
+      development_only_cv: true
+      external_validation_year: 2014
+      protected_test_year: 2015
+      defer_test_evaluation: true
+
+    reproducibility:
+      dataset_sha256_required: true
+      freeze_split_manifest: true
+      freeze_cv_fold_manifest: true
+      create_protocol_fingerprint: true
+
+    artifacts:
+      directory: "labs/lab12/artifacts"
+      figures_directory: "labs/lab12/artifacts/figures/stage05"
+
+  stage06:
+    enabled: true
+
+    evaluation:
+      reuse_stage05_protocol: true
+      verify_protocol_fingerprint: true
+      development_only: true
+      primary_metric: pooled_mae
+
+    probe_models:
+      ridge:
+        alpha: 10.0
+      random_forest:
+        n_estimators: 80
+        max_depth: 8
+        min_samples_leaf: 3
+        n_jobs: 2
+
+    experiments:
+      missing_values:
+        enabled: true
+        candidates: [median, median_with_indicator]
+      encoding:
+        enabled: true
+        candidates: [one_hot, ordinal, rare_category_one_hot]
+      scaling:
+        enabled: true
+        candidates: [none, standard, robust, minmax]
+      outliers:
+        enabled: true
+        candidates: [keep, feature_iqr_capping]
+      target_transformation:
+        enabled: true
+        candidates: [original, log, log1p]
+
+    feature_policy:
+      exclude_unknown_availability: true
+      weight_sensitivity_only: true
+      exclude_target_derived_features: true
+
+    reproducibility:
+      random_seed: 42
+      store_fold_results: true
+      store_config_hashes: true
+
+    artifacts:
+      directory: "labs/lab12/artifacts"
+      figures_directory: "labs/lab12/artifacts/figures/stage06"
