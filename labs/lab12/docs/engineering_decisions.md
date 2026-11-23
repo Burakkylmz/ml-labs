@@ -468,3 +468,598 @@ Group-Aware Data Splitting) kapsamında eklenmiştir.
 - **Confidence:** High
 - **Related Artifacts:** `stage05_evaluation_contract.json`,
   `docs/stage05_evaluation_contract.md`
+
+### D-033 — Stage 05 Protocol Recovery & Fingerprint Verification (Accepted)
+
+- **Question:** Stage 06, Stage 05'in dondurulmuş split/CV protokolünü değiştirmeden mi
+  kullanıyor?
+- **Evidence:** Dataset SHA-256 (`9cffdb4a...578a`) Stage 01-03→05→06 boyunca değişmeden
+  doğrulandı; Stage 05 protokol fingerprint'i (`b87ca0fd...8935e`) notebook içinde yeniden
+  hesaplanıp birebir eşleşti.
+- **Decision:** Stage 06, Stage 05 split/CV manifest'lerini **salt-okunur** olarak kullanır;
+  hiçbir boundary/fold değiştirilmedi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage05_protocol_fingerprint.json`, `stage05_cv_fold_manifest.csv`
+
+### D-034 — Stage 06 Feature Allowlist Freeze (Accepted)
+
+- **Question:** Stage 06 deneyleri hangi feature setinde çalışacak?
+- **Decision:** Numeric: `Line_Item_Qty_Sum`, `Line_Item_Value_Sum`. Categorical:
+  `Shipment_Mode`, `INCO_Term`, `Country`, `Product_Group`. `Weight_KG` (D-006) ana setten
+  dışlandı, sadece sensitivity analizinde kullanıldı.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage06_feature_schema.json`
+
+### D-035 — EXP-01 Missing Value Handling (Inconclusive / Deferred)
+
+- **Question:** Median imputation + Missing Indicator, sadece median imputation'a göre
+  ölçülebilir bir fark yaratıyor mu?
+- **Evidence:** Ridge pooled MAE farkı tam sıfır (8001.52 = 8001.52); Random Forest'ta
+  fark -1.08 USD (pratik önemsiz). Ana feature set'te gerçek missing value yok (%0.0).
+- **Decision:** Missing Indicator varsayılan pipeline'a **dahil edilmedi.**
+- **Status:** Inconclusive / Deferred
+- **Confidence:** High (ölçüm güvenilir, ancak ayırt edici sinyal yok)
+- **Related Artifacts:** `stage06_missingness_diagnostics.csv`, `stage06_cv_results.csv`
+
+### D-036 — EXP-02 Categorical Encoding (Accepted)
+
+- **Question:** OneHot, Ordinal, Rare-Category-Grouped OneHot arasında hangisi tercih
+  edilmeli?
+- **Evidence:** Ordinal, Ridge pooled MAE'yi +257.76 USD kötüleştirdi (semantik + ölçülen
+  kanıt). Rare-category grouping, boyutu 57→43'e indirdi ve her iki estimator'da en iyi/
+  en yakın ikinci sonucu verdi.
+- **Decision:** `OneHotEncoder` + rare-category grouping (`min_frequency=10`) **tercih
+  edilen**; `OrdinalEncoder` **reddedildi.**
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage06_encoding_diagnostics.csv`,
+  `stage06_encoding_output_dimensions.csv`
+
+### D-037 — EXP-03 Feature Scaling (Model-Dependent)
+
+- **Question:** Scaling, Ridge ve Random Forest üzerinde nasıl farklılaşıyor?
+- **Evidence:** Random Forest'ta fark <0.4 USD (ölçek-bağımsız). Ridge'de MinMaxScaler en
+  iyi sonucu verdi (-310.45 USD none'a göre) ancak tek bir uç değere (≈290k USD) duyarlılık
+  riski taşıyor.
+- **Decision:** Random Forest için scaling **gereksiz**; Ridge için MinMaxScaler
+  **Acceptable** (Preferred değil) kategorisinde.
+- **Status:** Model-Dependent Decision
+- **Confidence:** Medium (tek uç değer riski nedeniyle)
+- **Related Artifacts:** `stage06_scaling_diagnostics.csv`
+
+### D-038 — EXP-04 Outlier Treatment (Mixed)
+
+- **Question:** Quantile capping (P1/P99), raw feature'lara göre ölçülebilir bir fayda
+  sağlıyor mu?
+- **Evidence:** Ridge pooled MAE -245.87 USD iyileşti; Random Forest'ta fark <0.2 USD.
+  Capped fraction ~%2.
+- **Decision:** Ridge için **Acceptable**; Random Forest için **Inconclusive** (gerekirse
+  atlanabilir). Target hiçbir zaman capping'e uğramaz.
+- **Status:** Mixed (model-bağımlı)
+- **Confidence:** High
+- **Related Artifacts:** `stage06_outlier_diagnostics.csv`
+
+### D-039 — EXP-05 Target Transformation (Model-Dependent, Kritik Bulgu — Stage 07'de
+derinleştirildi)
+
+- **Question:** Log/log1p target dönüşümü, orijinal skalaya göre tahmin performansını
+  iyileştiriyor mu?
+- **Evidence (orijinal):** Ridge pooled MAE, log transform ile 8001.52'den **59,303.40
+  USD'ye** fırladı (~7.4x kötüleşme).
+- **Evidence (Stage 07 OOF-level re-analiz ile düzeltildi):** Blowup, uniform bir
+  "retransformation bias" değil. Ridge+log için **median abs error aslında daha iyi**
+  (3489.0 vs original'ın 4963.5 USD). Blowup, 3252 tahminin sadece **7'sinin (%0.2)**
+  >1M USD absürt tahmin üretmesinden kaynaklanıyor (top-5 error, toplam error'ın %80.1'i).
+  Bu extreme tahminler neredeyse tamamen **Fold 2'de** yoğunlaşıyor (RMSE=5,004,844 vs
+  diğer fold'larda 30,689-56,626 USD). Kök neden: exponential inverse-transform, Fold
+  2'nin training verisindeki nadir bir feature kombinasyonu için oluşan orta büyüklükteki
+  log-space hatasını katlanarak büyütüyor; ayrıca Ridge log-uzayda squared-error minimize
+  ettiği için (yaklaşık medyan/relative hata) USD-space MAE (ortalama-hataya dayalı) ile
+  hedef uyumsuzluğu var.
+- **Decision:** Log/log1p, **Ridge için kesin olarak reddedildi** (hem orijinal hem
+  düzeltilmiş kanıtla); Random Forest için **Acceptable** (Preferred ilan edilecek kadar
+  büyük değil, extreme blowup gözlenmedi). Varsayılan: original scale.
+- **Status:** Model-Dependent Decision (Rejected for Ridge, Acceptable for Random Forest)
+- **Confidence:** High
+- **Limitations:** Bu düzeltme, var olan OOF prediction artifact'inin (yeniden fit
+  gerektirmeden) derinlemesine re-analizidir — yeni bir CV deneyi çalıştırılmadı.
+- **Related Artifacts:** `stage06_target_transform_diagnostics.csv`,
+  `stage06_paired_comparisons.csv`, `stage06_oof_predictions.csv`
+
+### D-040 — Preprocessing Fit Boundary Enforcement (Accepted)
+
+- **Question:** Tüm preprocessing parametreleri gerçekten yalnızca fold-training'den mi
+  fit edildi?
+- **Evidence:** Her fold için yeni pipeline instance'ı oluşturuldu; OOF prediction
+  shipment key'lerinin Training split'ine ait olduğu programatik `issubset` kontrolüyle
+  doğrulandı; 2014/2015 target değerlerine hiçbir hücrede erişilmedi.
+- **Decision:** CV fitting boundary kuralı **ihlal edilmedi.**
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage06_oof_predictions.csv`
+
+### D-041 — Reproducibility Verification (Accepted)
+
+- **Question:** Stage 06 pipeline'ları deterministik mi?
+- **Evidence:** Referans pipeline iki kez fit edildi; tahminler `np.allclose` ile
+  eşleşti. Local (`uv run`) ve Docker (`ml-lab`) ortamlarında ayrı ayrı "temiz kernel"
+  execution'ları 0 hata/0 uyarı ile tamamlandı; dataset hash her iki ortamda sabit kaldı.
+- **Decision:** `random_seed=42`; multi-threaded Random Forest için bit-bazında birebir
+  eşitlik garanti edilmez (kabul edilen sınırlama), `np.allclose` yeterli kabul edildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage06_reproducibility_report.json`
+
+### D-042 — Stage 07 Readiness & Deferred Decisions (Accepted)
+
+- **Question:** Stage 06 sonunda Stage 07'ye geçiş için ne hazır, ne hâlâ açık?
+- **Decision:** Feature allowlist, missing-value/encoding/outlier politikaları dondurulmuş
+  adaylar olarak hazır. Scaling ve target transformation politikaları **model seçimi
+  sonrası yeniden teyit edilmelidir** (model-dependent). D-006 (Weight) ve D-010 (Qty/Value
+  aggregation) hâlâ açık. Stage 07'ye geçilmemiştir.
+- **Status:** Accepted (GO — conditional on Section 14 handoff checklist)
+- **Confidence:** High
+- **Related Artifacts:** `stage06_preprocessing_contract.json`,
+  `docs/stage06_preprocessing_contract.md`
+
+### D-043 — Stage 07 Feature Eligibility Contract (Accepted)
+
+- **Question:** Hangi raw SCMS kolonlari Stage 07 feature engineering icin aday
+  olusturur, hangileri mandatory exclusion'dir?
+- **Evidence:** 14 feature katalogu (`stage07_feature_catalog.csv`) Prediction_Time_
+  Availability, Leakage_Risk ve Decision_Status alanlariyla dondu.
+- **Decision:** `Freight Cost (USD)`, raw ID'ler, post-shipment tarihler mandatory
+  exclusion; digerleri Section 04-dekiler gibi kategorize edildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage07_feature_catalog.csv`, `stage07_feature_availability_audit.csv`
+
+### D-044 — Shipment Composition Features (Accepted)
+
+- **Question:** `Line_Item_Count`, `Distinct_Item_Description_Count`,
+  `Distinct_Molecule_Count` olcumsel katki sagliyor mu?
+- **Evidence:** Add-one-group ablation: F1 (Core+Composition) her iki estimator icin de
+  F0'dan daha iyi (Ridge -58.17 USD, RF -13.78 USD pooled). Drop-one-group: cikarilmasi
+  her iki estimator icin de kotulesme (Ridge +29.85, RF +16.57).
+- **Decision:** Accepted -- "Adds Consistent Value".
+- **Status:** Accepted
+- **Confidence:** Medium-High (4 fold, kucuk ama tutarli etki)
+- **Related Artifacts:** `stage07_ablation_results.csv`, `docs/stage07_ablation_study.md`
+
+### D-045 — Shipment Value Features (Model-Dependent / Conditional)
+
+- **Question:** `Line_Item_Value_Mean/Max`, `Value_Dispersion` -- katki mi redundancy mi?
+- **Evidence:** Ridge icin hafif pozitif katki (-30.60 USD, F2 vs F0). Random Forest icin
+  F4'ten cikarilmasi performansi IYILESTIRDI (-95.64 USD) -- Line_Item_Value_Sum (core) ile
+  yuksek korelasyon (Section 09) nedeniyle redundant. Ayrica %13.97 "Freight Included in
+  Commodity Cost" bundling riski (D-010 baglantili).
+- **Decision:** Conditional -- Ridge icin Acceptable, Random Forest icin Potentially
+  Redundant/Harmful. Production eligibility onayi YOK.
+- **Status:** Conditional
+- **Confidence:** Medium
+- **Related Artifacts:** `stage07_ablation_results.csv`, `stage07_numeric_associations.csv`
+
+### D-046 — Product Diversity Features (Rejected)
+
+- **Question:** `Product_Group_Diversity` predictive bir feature olabilir mi?
+- **Evidence:** 7030/7030 shipment tam olarak 1 Product Group iceriyor (sifir varyans,
+  ampirik olarak dogrulandi). F3 vs F0 ablation sanity-check: Ridge farki TAM SIFIR,
+  RF farki numeric noise (-0.57 USD).
+- **Decision:** REJECTED -- zero-variance feature, modele dahil edilemez.
+- **Status:** Rejected
+- **Confidence:** High (dogrudan, kesin ampirik kanit)
+- **Related Artifacts:** `stage07_feature_lineage.csv` (F-C1)
+
+### D-047 — Calendar Feature Availability (Conditional, D-007 Korunuyor)
+
+- **Question:** `Scheduled_Month`/`Scheduled_Quarter`/`Scheduled_Year` production
+  feature seti icin uygun mu?
+- **Evidence:** Calendar_Sensitivity konfigurasyonu, her iki estimator icin de hafif
+  kotulesme gosterdi (RF +43.83, Ridge +38.78 USD vs F4). `Scheduled_Year`, split
+  boundary ile dolayli iliskisi nedeniyle ayrica Excluded edildi.
+- **Decision:** Month/Quarter Conditional/Sensitivity-Only (D-007 korunuyor); Year
+  Excluded.
+- **Status:** Conditional
+- **Confidence:** Medium
+- **Related Artifacts:** `stage07_ablation_results.csv` (Calendar_Sensitivity)
+
+### D-048 — Weight Sensitivity Policy (D-006 Korunuyor)
+
+- **Question:** Weight_KG'nin buyuk olcumsel faydasi, D-006 kararini degistirir mi?
+- **Evidence:** Weight_Sensitivity konfigurasyonu Random Forest'i carpici sekilde
+  iyilestirdi (-542.09 USD pooled MAE), Ridge'i ihmal edilebilir etkiledi (-0.41 USD).
+- **Decision:** Performans etkisi ne olursa olsun, D-006 (prediction-time availability
+  Unknown) **DEGISMEDI** -- Weight_KG Sensitivity-Only kalmaya devam ediyor.
+- **Status:** Accepted (D-006 unchanged)
+- **Confidence:** High
+- **Related Artifacts:** `stage07_ablation_results.csv` (Weight_Sensitivity)
+
+### D-049 — Filter Feature Selection (Acceptable Alternative)
+
+- **Question:** `SelectKBest(mutual_info_regression)` No_Selection'a kiyasla nasil
+  performans gosteriyor?
+- **Evidence:** k=5/10/15 icin Ridge MAE 8155-8214 (No_Selection: 7921); RF MAE
+  6421-6883 (No_Selection: 6239). Jaccard stability (k=10): 0.483.
+- **Decision:** Acceptable Alternative -- No_Selection'dan biraz daha kotu ama daha az
+  feature ile makul bir trade-off sunuyor.
+- **Status:** Acceptable Alternative
+- **Confidence:** Medium
+- **Related Artifacts:** `stage07_feature_selection_results.csv`
+
+### D-050 — Embedded Feature Selection (Acceptable Alternative)
+
+- **Question:** `SelectFromModel(Lasso(alpha=50.0))` nasil performans gosteriyor?
+- **Evidence:** Ridge MAE 8065.87, RF MAE 6332.24 (No_Selection'dan biraz daha kotu,
+  ~22.75 encoded feature secerek).
+- **Decision:** Acceptable Alternative.
+- **Status:** Acceptable Alternative
+- **Confidence:** Medium
+- **Related Artifacts:** `stage07_feature_selection_results.csv`
+
+### D-051 — Wrapper Feature Selection (Rejected, bu konfigurasyonla)
+
+- **Question:** Limited `RFE(n_features_to_select=8)` nasil performans gosteriyor?
+- **Evidence:** Ridge MAE 8645.20, RF MAE 7438.38 -- test edilen 3 yontem arasinda
+  en kotu, No_Selection'dan acikca daha yuksek.
+- **Decision:** Bu n=8/step=2 konfigurasyonuyla Rejected; daha genis n ile yeniden
+  denenmesi gelecek bir arastirma konusu olabilir (Stage 07 kapsaminda degil).
+- **Status:** Rejected (bu konfigurasyonla)
+- **Confidence:** Medium
+- **Related Artifacts:** `stage07_feature_selection_results.csv`
+
+### D-052 — Feature Group Ablation (Accepted, bkz D-044/D-045/D-046/D-047)
+
+- **Question:** Hangi feature group'lari F4'e dahil etmek/cikarmak degistiriyor?
+- **Decision:** Composition "Adds Consistent Value"; Value "Model-Dependent" (RF icin
+  redundant); Diversity "Rejected"; Transport Extensions "Inconclusive" (kucuk etki).
+- **Status:** Accepted
+- **Confidence:** Medium-High
+- **Related Artifacts:** `stage07_ablation_results.csv`, `docs/stage07_ablation_study.md`
+
+### D-053 — Feature Importance & Stability (Accepted)
+
+- **Question:** Permutation importance ve ablation sonuclari birbiriyle tutarli mi?
+- **Evidence:** Value grubu YUKSEK permutation importance gosterdi (RF: 1158.83, Ridge:
+  1840.54) AMA ablation'da cikarilmasi RF'yi iyilestirdi -- correlated feature'larin
+  (Line_Item_Value_Sum ile) importance'i "paylastigi" klasik senaryo (master prompt'un
+  ongordugu).
+- **Decision:** Permutation importance TEK BASINA feature'in production degerine karar
+  vermek icin yeterli degildir -- ablation ile birlikte degerlendirilmelidir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage07_permutation_importance.csv`
+
+### D-054 — Performance-Complexity Trade-Off (Accepted)
+
+- **Question:** Daha fazla feature, anlamli bir MAE iyilestirmesiyle sonuclaniyor mu?
+- **Evidence:** F0 (6 feature) -> F1 (9 feature) iyi bir trade-off; F0 -> F4 (15 feature)
+  Ridge'i iyilestirirken RF'yi kotulestiriyor -- 2.5x feature artisi net kazanc
+  saglamiyor.
+- **Decision:** Feature count artisi, otomatik olarak daha iyi secim degildir --
+  model-ozgu degerlendirme gerektirir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage07_performance_complexity.csv`
+
+### D-055 — Stage 08-09 Feature Set Handoff (Accepted)
+
+- **Question:** Stage 08-09'a hangi feature set adaylari tasinacak?
+- **Decision:** Candidate A (Minimal Core) -- Recommended for Next Stage; Candidate B
+  (Extended Eligible) -- Acceptable Alternative; Candidate C (Reduced, Filter k=10) --
+  Conditional; Candidate D (Sensitivity-Only, Weight dahil) -- SADECE sensitivity analizi,
+  production karsilastirmasina DAHIL EDILMEZ. **Final production feature set
+  KESINLESMEMISTIR.**
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage07_recommended_feature_sets.json`,
+  `stage07_feature_contract.json`, `docs/stage07_feature_contract.md`
+
+### D-056 — Stage 08 Baseline Evaluation Contract (Accepted)
+
+- **Question:** Stage 08 baseline degerlendirmesi Stage 05'in dondurulmus protokolunu
+  degistirmeden mi kullaniyor?
+- **Evidence:** Dataset SHA-256 ve Stage 05 protokol fingerprint'i notebook icinde
+  yeniden hesaplanip birebir eslesti; development population (5551/4987) Stage 05
+  raporuyla eslesti.
+- **Decision:** Stage 08, Stage 05 split/CV manifest'lerini degistirmeden kullandi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_fold_statistics.csv`
+
+### D-057 — Global Median Baseline (B0) (Accepted)
+
+- **Question:** B0'in gercek CV performansi nedir?
+- **Evidence:** Pooled MAE=9226.37 USD, RMSE=17773.47, Bias=-7136.96 (net underprediction).
+- **Decision:** Accepted as baseline, ancak Statistical Reference olarak secilmedi
+  (B1 daha iyi performans gosterdi).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_cv_results.csv`
+
+### D-058 — Global Mean Baseline (B1) (Accepted — Statistical Reference)
+
+- **Question:** B1, B0'a kiyasla nasil performans gosteriyor?
+- **Evidence:** Pooled MAE=9106.34 USD -- B0'dan daha iyi. Training population uzerinde
+  median teorik olarak MAE-optimal olsa da, bu CV'de (temporal shift nedeniyle) mean
+  daha iyi sonuc verdi.
+- **Decision:** B1, **Statistical Reference Baseline** olarak secildi. Bu bulgu
+  **genel bir kural olarak sunulmamalidir** -- bu CV'ye ozgudur.
+- **Status:** Accepted
+- **Confidence:** Medium (temporal-shift-sensitive, genellenebilirligi sinirli)
+- **Related Artifacts:** `stage08_cv_results.csv`, `stage08_baseline_acceptance.json`
+
+### D-059 — Shipment Mode Median Baseline (B2) (Accepted)
+
+- **Question:** Shipment Mode segmentasyonu olcumsel katki sagliyor mu?
+- **Evidence:** Pooled MAE=8791.55 USD (B0'dan -434.82 USD daha iyi), fallback rate=0.000.
+- **Decision:** Accepted -- tek-segment baseline'lar arasinda en guclusu.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_segment_support.csv`
+
+### D-060 — INCOTERM Median Baseline (B3) (Conditional)
+
+- **Question:** INCOTERM segmentasyonu olcumsel katki sagliyor mu?
+- **Evidence:** Pooled MAE=9145.64 USD -- B0'dan sadece -80.73 USD daha iyi, marjinal.
+  INCOTERM'in target availability ile olasi iliskisi (Stage 03.5/04) ayrica risk olarak
+  not edildi.
+- **Decision:** Conditional -- istatistiksel katki zayif, deployment semantics ayrica
+  degerlendirilmeli.
+- **Status:** Conditional
+- **Confidence:** Medium
+- **Related Artifacts:** `stage08_segment_support.csv`
+
+### D-061 — Hierarchical Segment Baseline (B4) (Accepted — Business Reference)
+
+- **Question:** Mode+INCOTERM birlikte kullanimi, tek-segment baseline'lardan daha iyi
+  mi?
+- **Evidence:** Pooled MAE=8694.56 USD -- butun baseline'lar arasinda en iyisi, B2'ye
+  kiyasla -96.99 USD (kucuk ama 4 fold'un hepsinde tutarli) iyilesme. Fallback rate=0.041.
+- **Decision:** B4, **Business Reference Baseline** ve **Robust Fallback Baseline**
+  olarak secildi.
+- **Status:** Accepted
+- **Confidence:** Medium-High (kazanc kucuk, ama tutarli)
+- **Related Artifacts:** `stage08_baseline_ranking.csv`, `stage08_fallback_diagnostics.csv`
+
+### D-062 — Unseen Category & Fallback Policy (Accepted)
+
+- **Question:** Unseen/missing category'ler ve low-support segment'ler nasil ele
+  alinmali?
+- **Evidence:** Sirali fallback (combined->mode->incoterm->global) 8 unit-level fixture
+  testiyle (known/unknown/low-support/missing/single-observation) ve gercek fold
+  diagnostikleriyle dogrulandi -- 0 NaN/infinite prediction, 0 crash.
+- **Decision:** Accepted.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_fallback_diagnostics.csv`
+
+### D-063 — Minimum Segment Support (Accepted, Non-Universal)
+
+- **Question:** B4 icin min_support degeri nasil belirlenmeli?
+- **Evidence:** `min_support=10`, gercek training verisinde 17 (Mode x INCOTERM)
+  kombinasyonundan 8'inin (%47) 10'dan az gozlem icermesiyle gerekcelendirildi.
+- **Decision:** `min_support=10` kabul edildi -- **evrensel bir istatistiksel kural
+  olarak sunulmamaktadir**, sadece bu veri setine ozgu bir karar.
+- **Status:** Accepted (non-universal)
+- **Confidence:** Medium
+- **Related Artifacts:** `stage08_segment_support.csv`
+
+### D-064 — Baseline Error Metrics (Accepted)
+
+- **Question:** Hangi metrikler tum baseline'lar icin tutarli hesaplandi?
+- **Decision:** MAE, RMSE, Median AE, WAPE, Bias (pred-actual), High-Cost MAE (fold-
+  training P90 threshold) -- 5 baseline'in hepsinde ayni tanimla hesaplandi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_cv_results.csv`
+
+### D-065 — Tail-Risk Evaluation (Accepted, Kritik Bulgu)
+
+- **Question:** Baseline'lar high-cost shipment'larda sistematik olarak basarisiz mi?
+- **Evidence:** **5 baseline'in HEPSINDE %100 underprediction rate** (fold-training
+  P90+ segmentinde).
+- **Decision:** Bu, basit constant/median-tabanli predictor'larin sag-kuyruklu
+  dagilimda **yapisal bir ozelligidir**, duzeltilebilir bir hata degildir. Stage 09
+  modelleri bu zayifligi olcumsel olarak raporlamalidir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_tail_error_analysis.csv`
+
+### D-066 — Baseline Comparative Ranking (Accepted)
+
+- **Question:** B0-B4 arasindaki genel siralama nedir?
+- **Evidence:** Pooled MAE siralamasi: B4 (8694.56) < B2 (8791.55) < B1 (9106.34) < B3
+  (9145.64) < B0 (9226.37).
+- **Decision:** Accepted -- ancak final karar sadece en dusuk MAE'ye gore verilmedi
+  (complexity/fallback/robustness birlikte degerlendirildi).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_baseline_ranking.csv`
+
+### D-067 — Business Baseline Acceptance (Accepted, SLA Yok)
+
+- **Question:** Stage 09 icin hangi baseline'lar referans olarak kabul edildi?
+- **Decision:** Statistical Reference=B1, Business Reference=B4, Robust Fallback=B4.
+  **%5 MAE improvement provisional bir engineering threshold'dur -- business-approved
+  bir SLA degildir.**
+- **Status:** Accepted (Provisional threshold, Pending Business Validation for SLA)
+- **Confidence:** Medium (SLA onayi eksik)
+- **Related Artifacts:** `stage08_baseline_acceptance.json`
+
+### D-068 — Stage 09 Benchmark Contract (Accepted)
+
+- **Question:** Stage 09'a hangi degerlendirme kurallari tasinacak?
+- **Decision:** Dataset/protocol fingerprint, baseline registry, kabul edilen referans
+  baseline'lar, metrik tanimlari, model comparison rules (Stage 06-07 probe sonuclari
+  SADECE contextual referans) belgelendi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage08_benchmark_contract.json`, `docs/stage09_benchmark_contract.md`
+
+### D-069 — Stage 09 Benchmark Protocol (Accepted)
+
+- **Question:** Stage 09 model training, Stage 05-08'in dondurulmus kararlarini
+  degistirmeden mi yapiliyor?
+- **Evidence:** 5 gate (A-E: Dataset, Evaluation, Feature Contract, Baseline Contract,
+  Dependency Compatibility) programatik olarak dogrulandi ve PASSED.
+- **Decision:** Accepted -- butun gate'ler gecti, training'e izin verildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_environment_compatibility.json`
+
+### D-070 — Model Family Registry (Accepted)
+
+- **Question:** Hangi 6 model, hangi ailelerle benchmark'a dahil edildi?
+- **Decision:** M01 Ridge, M02 ElasticNet (Regularized Linear); M03 Random Forest, M04
+  ExtraTrees (Bagging); M05 XGBoost, M06 LightGBM (Gradient Boosting).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_model_registry.json`
+
+### D-071 — Fixed Estimator Configurations (Accepted)
+
+- **Question:** Model hyperparameters nasil belirlendi?
+- **Decision:** Sabit, optimize edilmemis baslangic degerleri (Stage 06 probe
+  parametreleri uyumlu oldugu yerde yeniden kullanildi, ancak modeller Stage 09'un
+  kendi protokolune yeniden fit edildi -- eski probe sonuclari dogrudan kullanilmadi).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `config/settings.yaml` (lab12.stage09.models)
+
+### D-072 — Model-Specific Preprocessing (Accepted)
+
+- **Question:** Scaling politikasi model ailesine gore nasil uygulanmali?
+- **Evidence:** Stage 06 EXP-03: scaling Ridge icin faydali olabilir, RF icin
+  onemsiz.
+- **Decision:** Ridge/ElasticNet icin `StandardScaler`; RF/ExtraTrees/XGBoost/LightGBM
+  icin scaling YOK.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_feature_preprocessing_registry.json`
+
+### D-073 — Linear Model Comparison (Accepted)
+
+- **Question:** Ridge vs ElasticNet, freight cost prediction'da nasil performans
+  gosteriyor?
+- **Evidence:** M01=8029.16 USD (96 negatif tahmin, %2.95), M02=7993.60 USD (0 negatif
+  tahmin).
+- **Decision:** ElasticNet hafifce daha iyi VE daha guvenli (negatif tahmin riski yok).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_model_comparison.csv`
+
+### D-074 — Bagging Model Comparison (Accepted)
+
+- **Question:** Random Forest vs ExtraTrees, hangisi daha iyi?
+- **Evidence:** M03=6151.90 USD, M04=5880.35 USD.
+- **Decision:** ExtraTrees, Random Forest'tan daha iyi performans gosterdi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_model_comparison.csv`
+
+### D-075 — Boosting Model Comparison (Accepted)
+
+- **Question:** XGBoost vs LightGBM, hangisi daha iyi?
+- **Evidence:** M05=5808.51 USD, M06=6236.25 USD.
+- **Decision:** XGBoost, LightGBM'den belirgin olarak daha iyi -- ve butun 6 modelin
+  en iyisi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_model_comparison.csv`
+
+### D-076 — Primary Benchmark Feature Set (Accepted)
+
+- **Question:** Primary benchmark hangi feature set'i kullanmali?
+- **Decision:** Stage 07 Minimal Core (6 feature) -- tum 6 model bu ayni feature set
+  uzerinden degerlendirildi (fair comparison).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_cv_results.csv`
+
+### D-077 — Secondary Feature Set Evaluation (Conditional/Exploratory)
+
+- **Question:** Extended Eligible feature set, best-of-family modellerde ek fayda
+  sagliyor mu?
+- **Evidence:** M02 -46.47 USD (hafif iyilesme), M04 +44.14 USD (hafif kotulesme), M05
+  +130.22 USD (kotulesme) -- tutarsiz, model-bagimli.
+- **Decision:** Extended feature set, Stage 09'da **confirmatory kanit saglamadi** --
+  Stage 10'un varsayilan feature setine yukseltilmedi.
+- **Status:** Conditional (exploratory, adaptive-selection riski)
+- **Confidence:** Medium
+- **Related Artifacts:** `stage09_feature_set_sensitivity.csv`
+
+### D-078 — Baseline Relative Improvement (Accepted)
+
+- **Question:** Modeller B4/B1'e gore gercek iyilesme sagliyor mu?
+- **Evidence:** Tum 6 model B4'u asti (%7.7-%33.2 araliginda); en iyi model M05
+  (XGBoost), B4'e gore %33.2, B1'e gore %36.2 iyilesme gosterdi.
+- **Decision:** Accepted -- iyilesme gercek ve 4 fold'un hepsinde tutarli.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_baseline_improvements.csv`
+
+### D-079 — Generalization Gap Evaluation (Accepted)
+
+- **Question:** Training-validation gap, overfitting kaniti olarak kullanilabilir mi?
+- **Decision:** Gap hesaplandi (`stage09_generalization_gap.csv`) ama **tek basina
+  overfitting kaniti olarak yorumlanmadi** -- temporal distribution shift confound'u
+  acikca belirtildi.
+- **Status:** Accepted (with explicit confound caveat)
+- **Confidence:** Medium
+- **Related Artifacts:** `stage09_generalization_gap.csv`
+
+### D-080 — High-Cost Shipment Risk (Accepted, Kritik Bulgu)
+
+- **Question:** Stage 09 modelleri, Stage 08 baseline'larinin %100 underprediction
+  sorununu azaltiyor mu?
+- **Evidence:** Tum 6 model underprediction rate'i %100'un altina dusurdu (araligi
+  %83.1-%92.5) -- ama HICBIRI sorunu tamamen ortadan kaldirmadi.
+- **Decision:** Gercek ama KISMI iyilesme olarak kabul edildi -- "cozuldu" olarak
+  sunulmadi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_tail_risk_analysis.csv`
+
+### D-081 — Temporal Stability (Accepted)
+
+- **Question:** Model performansi 4 fold arasinda tutarli mi?
+- **Evidence:** M05 en stabil ust-performans model (fold-std=665.48); M02 en az
+  stabil (fold-std=1634.11).
+- **Decision:** Fold-level tutarlilik, Section 16 shortlisting kriterine dahil edildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_cv_results.csv`
+
+### D-082 — Computational Complexity (Accepted)
+
+- **Question:** Ek model complexity'si operasyonel olarak maliyetli mi?
+- **Evidence:** Tum modellerin fit/predict suresi <1 saniye.
+- **Decision:** Bu olcekte complexity farki operasyonel bir engel degil.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_runtime_benchmark.csv`
+
+### D-083 — Model Shortlisting (Accepted)
+
+- **Question:** Stage 10 icin hangi modeller secildi?
+- **Evidence:** M05 (XGBoost, %33.2 iyilesme, fold-std=665) ve M04 (ExtraTrees, %32.4
+  iyilesme, fold-std=935) -- her ikisi de kendi ailesinde en iyi, meaningful-improvement/
+  stability/negligible-negative-rate kriterlerini karsiladi.
+- **Decision:** Shortlisted: M05, M04 (2 farkli aile). M01 Inconclusive (negatif tahmin
+  riski); M02/M03/M06 Conditional Candidate (zayif veya redundant).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_model_shortlist.csv`, `stage09_model_shortlist.json`
+
+### D-084 — Stage 10 Optimization Handoff (Accepted)
+
+- **Question:** Stage 10'a hangi sozlesme tasinacak?
+- **Decision:** Dataset/protokol fingerprint, shortlisted model'lar, sabit baslangic
+  konfigurasyonlari, feature/preprocessing policy, metrik/tail-risk kisitlari,
+  selection-bias kontrolleri belgelendi. **Optimization search Stage 09'da
+  CALISTIRILMADI.**
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage09_stage10_handoff.json`, `docs/stage10_optimization_contract.md`

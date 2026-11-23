@@ -249,7 +249,162 @@ Full detail: [`docs/stage05_split_strategy.md`](docs/stage05_split_strategy.md),
 [`docs/stage05_leakage_risk_register.md`](docs/stage05_leakage_risk_register.md) (13 tracked
 risks).
 
+## Stage 06 — Evidence-Based Data Preprocessing & Controlled Experiments
+
+A fifth notebook (`lab12_stage06_evidence_based_preprocessing.ipynb`) re-verifies Stage 05's
+frozen protocol fingerprint, then runs 5 one-factor-at-a-time controlled experiments
+(EXP-01…EXP-05) across Stage 05's frozen 4-fold Expanding-Window CV, using two fixed
+"probe" estimators (Ridge `alpha=10.0`, RandomForestRegressor `n_estimators=80`). All
+preprocessing is fit on fold-training data only; 2014/2015 targets are never read.
+
+| Experiment | Dimension | Decision |
+|---|---|---|
+| EXP-01 | Missing Value Handling | Inconclusive / Deferred (0% real missing in main features) |
+| EXP-02 | Categorical Encoding | **Accepted:** OneHot + rare-category grouping; Ordinal rejected |
+| EXP-03 | Feature Scaling | Model-Dependent: irrelevant for RF, MinMaxScaler acceptable for Ridge |
+| EXP-04 | Outlier Treatment | Mixed: quantile capping helps Ridge, inconclusive for RF |
+| EXP-05 | Target Transformation | Model-Dependent: **rejected for Ridge** (retransformation bias), acceptable for RF |
+
+- **Headline finding:** applying `log`/`log1p` to the target and inverse-transforming back
+  to USD causes Ridge's pooled MAE to jump from **8,001.52 USD to 59,303.40 USD** (~7.4x
+  worse) — a dramatic, measured instance of the retransformation bias risk the Stage 06
+  master prompt flagged in advance. Random Forest, by contrast, improves marginally under
+  the same transform.
+- **124 total CV fits** across all experiments; validated first as a plain Python script
+  (66.7s) to isolate pipeline-logic correctness from Jupyter-kernel execution overhead,
+  then executed end-to-end on a clean kernel both locally and inside Docker (0 errors, 0
+  warnings in both).
+- **Leakage audit:** all 91,056 out-of-fold prediction rows verified (programmatically) to
+  belong only to the Training split; reproducibility verified by refitting the reference
+  pipeline twice and confirming identical predictions.
+- 4 Advanced Challenges: Weight_KG missingness sensitivity (D-006), rare-category threshold
+  sensitivity, scaling–estimator interaction, and log-target tail (P90+) error behavior.
+
+Full detail: [`docs/stage06_preprocessing_evidence.md`](docs/stage06_preprocessing_evidence.md),
+[`docs/stage06_experiment_results.md`](docs/stage06_experiment_results.md), and
+[`docs/stage06_preprocessing_contract.md`](docs/stage06_preprocessing_contract.md) (candidate
+policies for Stage 07 — not a finalized production pipeline).
+
+## Stage 07 — Evidence-Based Feature Engineering, Selection & Ablation Studies
+
+A sixth notebook (`lab12_stage07_feature_engineering_selection.ipynb`) re-verifies Stage
+05's frozen protocol fingerprint, engineers 14 candidate shipment-level features (Groups
+A–F), and runs Filter/Embedded/limited-Wrapper feature selection plus add-one/drop-one
+feature-group ablation — all on Stage 05's frozen 4-fold CV, using the same fixed Ridge/
+Random Forest probe estimators from Stage 06.
+
+| Feature Group | Decision |
+|---|---|
+| A — Shipment Composition (line-item/item/molecule counts) | **Accepted** — consistent small positive contribution for both estimators |
+| B — Shipment Value (mean/max/dispersion) | Model-dependent — helps Ridge slightly, redundant/harmful for Random Forest |
+| C — Product Diversity | **Rejected** — every shipment has exactly 1 Product Group (zero variance, empirically confirmed) |
+| D — Transport/Contract extensions (Managed By, Fulfill Via, First Line Designation) | Inconclusive — small, ambiguous effect |
+| E — Calendar (month/quarter) | Conditional/sensitivity-only (D-007); slightly hurts both estimators |
+| F — Weight | Sensitivity-only (D-006 unchanged) — despite a striking −542 USD pooled-MAE improvement for Random Forest |
+
+- **Correlated-feature lesson:** the Value group shows *high* permutation importance
+  (RF: 1159, Ridge: 1841) yet *removing* it from the combined set actually **improves**
+  Random Forest (−95.64 USD) — a textbook case of correlated features sharing importance
+  that ablation, not permutation importance alone, correctly resolves.
+- **Feature selection:** No Selection (full ~57-column encoded F4 space) outperformed
+  Filter (SelectKBest/MI), Embedded (Lasso SelectFromModel), and limited Wrapper (RFE,
+  n=8) in this setup — more encoded features consistently helped Random Forest here.
+- **136 total CV fits**; validated first as a plain Python script (37.4s) to separate
+  pipeline-logic correctness from Jupyter-kernel execution overhead — the slowdown seen
+  in Stage 06 was traced this time to matplotlib's interactive `TkAgg` backend blocking
+  on `plt.show()` during plain-script runs (fixed with `Agg`); the official clean-kernel
+  executions (local and Docker) both completed in ~43s with 0 errors.
+- **Recommended feature sets for Stage 08–09:** Candidate A (Minimal Core, 6 features —
+  Recommended), Candidate B (Extended Eligible, 15 features — Acceptable), Candidate C
+  (Filter-reduced, ~10 encoded features — Conditional), Candidate D (Weight-included,
+  sensitivity-only — never compared as production-ready). **No final production feature
+  set was chosen** — that remains Stage 08–09's job.
+
+Full detail: [`docs/stage07_feature_engineering_design.md`](docs/stage07_feature_engineering_design.md),
+[`docs/stage07_feature_selection_evidence.md`](docs/stage07_feature_selection_evidence.md),
+[`docs/stage07_ablation_study.md`](docs/stage07_ablation_study.md), and
+[`docs/stage07_feature_contract.md`](docs/stage07_feature_contract.md).
+
+## Stage 08 — Statistical & Business Baseline Development
+
+A seventh notebook (`lab12_stage08_statistical_business_baselines.ipynb`) builds 5
+baselines (B0 Global Median, B1 Global Mean, B2 Shipment Mode Median, B3 INCOTERM
+Median, B4 Hierarchical Segment Median) on Stage 05's frozen 4-fold CV — the reference
+levels Stage 09's ML models must beat.
+
+| Baseline | Pooled MAE (USD) | Note |
+|---|---:|---|
+| B0 — Global Median | 9,226.37 | Theoretically MAE-optimal on training, but not on this CV |
+| B1 — Global Mean | 9,106.34 | **Beat B0** — a temporal-shift-sensitive finding, not a general rule |
+| B2 — Shipment Mode Median | 8,791.55 | Best single-segment baseline, 0 fallback |
+| B3 — INCOTERM Median | 9,145.64 | Only marginal gain over B0 |
+| B4 — Hierarchical (Mode+INCOTERM) | **8,694.56** | Best overall — small but consistent gain over B2 |
+
+- **Statistical Reference Baseline: B1.** **Business Reference Baseline: B4.** No
+  business-approved SLA exists — a 5% MAE-improvement threshold is used only as a
+  *provisional* engineering reference point for Stage 09.
+- **Critical tail-risk finding:** all 5 baselines show a **100% underprediction rate**
+  on high-cost (fold-training P90+) shipments — a structural property of constant/
+  median-based predictors on a right-skewed target, not a fixable bug.
+- Hierarchical fallback (`combined segment → Shipment Mode → INCOTERM → global median`)
+  validated with 8 synthetic unit fixtures (known/unknown/low-support/missing/single-
+  observation segments) plus real fold diagnostics — 0 NaN/infinite predictions, 0
+  crashes; fallback triggered on 4.1% of B4's predictions.
+- 28 total baseline fits (20 planned + 8 reproducibility reruns); validated as a plain
+  script (3.2s) before clean-kernel execution — both local and Docker completed in
+  under 9 seconds with 0 errors.
+
+Full detail: [`docs/stage08_baseline_design.md`](docs/stage08_baseline_design.md),
+[`docs/stage08_baseline_evaluation.md`](docs/stage08_baseline_evaluation.md),
+[`docs/stage08_baseline_acceptance.md`](docs/stage08_baseline_acceptance.md), and
+[`docs/stage09_benchmark_contract.md`](docs/stage09_benchmark_contract.md) (Stage 09
+handoff — Stage 06/07 Ridge/RF probe results are contextual reference only, not
+directly comparable due to different feature/preprocessing policies).
+
+## Stage 09 — Model Training, Comparative Benchmarking & Model Shortlisting
+
+An eighth notebook (`lab12_stage09_model_training_benchmarking.ipynb`) trains 6 models
+across 3 families — Ridge/ElasticNet (Regularized Linear), Random Forest/ExtraTrees
+(Bagging), XGBoost/LightGBM (Gradient Boosting) — on Stage 05's frozen 4-fold CV, with
+fixed (not tuned) hyperparameters, and benchmarks them against Stage 08's B4/B1
+baselines.
+
+| Model | Pooled MAE (USD) | Improvement vs B4 |
+|---|---:|---:|
+| M05 — XGBoost | **5,808.51** (best) | **33.2%** |
+| M04 — ExtraTrees | 5,880.35 | 32.4% |
+| M03 — Random Forest | 6,151.90 | 29.2% |
+| M06 — LightGBM | 6,236.25 | 28.3% |
+| M02 — ElasticNet | 7,993.60 | 8.1% |
+| M01 — Ridge | 8,029.16 | 7.7% |
+
+- **All 6 models beat both B4 (8,694.56 USD) and B1 (9,106.34 USD)**, with tree-based/
+  boosting models showing a far larger gain than linear models.
+- **Tail-risk finding:** all 6 models reduce the high-cost-shipment underprediction rate
+  below Stage 08's baseline 100% (range: 83.1%–92.5%) — a real but only *partial*
+  improvement, not a fix.
+- ElasticNet produced **zero** negative raw predictions vs Ridge's 96 (2.95% of OOF) —
+  a concrete, measured safety advantage from the L1 penalty.
+- Five mandatory pre-execution gates (dataset integrity, evaluation-protocol integrity,
+  feature contract, baseline contract re-verified from real Stage 08 artifacts, and
+  XGBoost/LightGBM dependency compatibility) all passed before any training began.
+- **Model shortlist for Stage 10: M05 (XGBoost) and M04 (ExtraTrees)** — one candidate
+  per family, each independently meeting the improvement/stability/prediction-validity
+  bar; Ridge was downgraded to *Inconclusive* (negative-prediction risk), others to
+  *Conditional Candidate* (redundant with a stronger same-family peer, or unstable).
+- 44 total fits (24 primary + 12 secondary + 8 reproducibility reruns); both local and
+  Docker clean-kernel executions completed in under 17 seconds with 0 errors.
+
+Full detail: [`docs/stage09_model_experiment_design.md`](docs/stage09_model_experiment_design.md),
+[`docs/stage09_comparative_benchmark_results.md`](docs/stage09_comparative_benchmark_results.md),
+[`docs/stage09_generalization_diagnostics.md`](docs/stage09_generalization_diagnostics.md),
+[`docs/stage09_model_shortlist.md`](docs/stage09_model_shortlist.md), and
+[`docs/stage10_optimization_contract.md`](docs/stage10_optimization_contract.md) (a
+contract only — no search was executed).
+
 ## Next Steps
 
-Stage 06 (Evidence-Based Data Preprocessing) may begin now that the split/CV protocol is
-frozen and versioned — this lab deliberately stops here and does not begin Stage 06.
+Stage 10 (Hyperparameter Optimization) may begin now that a model shortlist and
+optimization contract are documented — this lab deliberately stops here and does not
+begin Stage 10. D-006 (Weight), D-010 (Quantity/Value aggregation), and the lack of a
+business-approved improvement SLA remain open.
