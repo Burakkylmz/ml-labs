@@ -4,7 +4,7 @@
 
 - **Module:** Advanced Machine Learning & Ensemble Methods
 - **Session:** 07
-- **Duration:** 150 minutes (10-minute break included), plus optional Advanced Challenges
+- **Duration:** 150 minutes, plus optional Advanced Challenges
 - **Audience:** Participants who have completed LAB02–LAB06
 
 This lab builds directly on LAB06's classification methodology (same dataset, same feature

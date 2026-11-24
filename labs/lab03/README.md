@@ -4,7 +4,7 @@
 
 - **Module:** Statistics & Exploratory Data Analysis
 - **Session:** 03
-- **Duration:** 150 minutes (including a 10-minute break)
+- **Duration:** 150 minutes
 - **Audience:** Participants who have completed LAB02
 
 This lab builds directly on LAB02. NumPy, Pandas, data loading, filtering/sorting, and groupby/aggregation

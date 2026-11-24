@@ -676,3 +676,185 @@ lab12:
     artifacts:
       directory: "labs/lab12/artifacts"
       figures_directory: "labs/lab12/artifacts/figures/stage10"
+
+  stage11:
+    enabled: true
+
+    evaluation:
+      reuse_stage05_protocol: true
+      verify_protocol_fingerprint: true
+      development_period: { start_year: 2006, end_year: 2013 }
+      external_validation_year: 2014
+      protected_test_year: 2015
+      external_validation_only: true
+      primary_metric: mae_usd
+
+    candidates:
+      primary: { model_id: M04, trial_id: M04-T003 }
+      alternative: { model_id: M05, trial_id: M05-T000 }
+      reuse_stage10_frozen_configs: true
+
+    feature_set:
+      name: minimal_core
+      reuse_stage07_contract: true
+
+    preprocessing:
+      reuse_frozen_contract: true
+      allow_refit_on_development: true
+      allow_reoptimization: false
+
+    baselines:
+      statistical: B1
+      business: B4
+      refit_on_development: true
+
+    metrics:
+      mae: true
+      rmse: true
+      median_ae: true
+      wape: true
+      bias: true
+      high_cost_mae: true
+      underprediction_rate: true
+
+    diagnostics:
+      segment_errors: true
+      residual_analysis: true
+      covariate_shift: true
+      label_coverage: true
+      reproducibility: true
+
+    restrictions:
+      allow_hyperparameter_tuning: false
+      allow_feature_selection: false
+      allow_2015_target_access: false
+      allow_posthoc_clipping: false
+      allow_calibration_fitting: false
+
+    reproducibility:
+      preserve_stage10_thread_policy: true
+      compare_local_docker: true
+
+    artifacts:
+      directory: "labs/lab12/artifacts"
+      figures_directory: "labs/lab12/artifacts/figures/stage11"
+
+  stage12:
+    enabled: true
+
+    integrity:
+      verify_dataset_hash: true
+      verify_stage05_fingerprint: true
+      preserve_stage11_candidate: true
+
+    model:
+      primary_id: M04-T003
+      secondary_id: M05-T000
+      reuse_stage10_config: true
+      reuse_stage07_features: true
+
+    explainability:
+      permutation_importance: true
+      shap_enabled: true
+      shap_model_output: raw
+      global_explanations: true
+      local_explanations: true
+      semantic_feature_grouping: true
+      verify_additivity: true
+      explanation_sample_seed: 42
+      max_explanation_samples: 200
+
+    uncertainty:
+      enabled: true
+      method: split_conformal_absolute_residual
+      development_only: true
+      time_aware: true
+      nominal_coverage: [0.80, 0.90]
+      inner_calibration_policy: last_training_calendar_year
+      outer_folds: reuse_stage05
+      preserve_model_calibration_disjointness: true
+
+    interval_policy:
+      research_only: true
+      production_enabled: false
+      require_version_matched_calibration: true
+
+    restrictions:
+      allow_2014_calibration_fitting: false
+      allow_2015_access: false
+      allow_model_retuning: false
+      allow_feature_selection: false
+
+    reproducibility:
+      random_seed: 42
+      verify_shap_additivity: true
+      store_calibration_manifest: true
+      store_interval_metrics: true
+
+    artifacts:
+      directory: "labs/lab12/artifacts"
+      figures_directory: "labs/lab12/artifacts/figures/stage12"
+
+  stage13:
+    enabled: true
+
+    model:
+      model_id: M04
+      trial_id: M04-T003
+      artifact_version: v1
+      reuse_stage10_config: true
+      reuse_stage11_training_population: true
+
+    persistence:
+      format: joblib
+      versioned: true
+      verify_sha256: true
+      allow_untrusted_loading: false
+      allow_silent_overwrite: false
+
+    feature_contract:
+      reuse_stage07_minimal_core: true
+      strict_schema: true
+      preserve_column_order: true
+      preserve_preprocessing: true
+
+    inference:
+      single_enabled: true
+      batch_enabled: true
+      batch_max_size: 100
+      predict_without_refitting: true
+      reject_invalid_outputs: true
+
+    explainability:
+      enabled: true
+      default_enabled: false
+      method: tree_shap
+      reuse_stage12_policy: true
+      verify_additivity: true
+      max_batch_explanations: 10
+
+    uncertainty:
+      production_enabled: false
+      research_only: true
+      interval_output_enabled: false
+
+    security:
+      verify_manifest: true
+      verify_model_identity: true
+      verify_dependency_versions: true
+      restrict_artifact_paths: true
+
+    reproducibility:
+      random_seed: 42
+      verify_serialization_parity: true
+      verify_local_docker_parity: true
+
+    restrictions:
+      allow_model_retuning: false
+      allow_feature_selection: false
+      allow_2014_model_selection: false
+      allow_2015_access: false
+
+    artifacts:
+      directory: "labs/lab12/artifacts"
+      figures_directory: "labs/lab12/artifacts/figures/stage13"

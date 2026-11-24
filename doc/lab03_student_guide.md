@@ -3,7 +3,7 @@
 Bu rehber, `ml-labs` projesindeki **LAB03: Statistics & Exploratory Data Analysis** çalışmasını kendi
 bilgisayarınızda Docker üzerinden nasıl çalıştıracağınızı adım adım açıklar.
 
-**Eğitim süresi:** 150 dakika (10 dakikalık mola dahil)
+**Eğitim süresi:** 150 dakika
 
 > Bu LAB, **LAB02**'nin devamıdır. LAB02'yi tamamlamadıysanız önce
 > [`doc/lab02_student_guide.md`](lab02_student_guide.md) rehberini takip edin.

@@ -4,7 +4,7 @@
 
 - **Module:** Time Series Fundamentals & Forecasting Baselines
 - **Session:** 10
-- **Duration:** 150 minutes (10-minute break included), plus optional Advanced Challenges
+- **Duration:** 150 minutes, plus optional Advanced Challenges
 - **Audience:** Participants who have completed LAB02–LAB09
 
 This lab is the transition point from classic tabular Machine Learning (LAB02–LAB09) to **Time

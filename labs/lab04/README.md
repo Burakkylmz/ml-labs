@@ -4,7 +4,7 @@
 
 - **Module:** Data Preparation & Preprocessing Pipelines
 - **Session:** 04
-- **Duration:** 150 minutes (including a 10-minute break)
+- **Duration:** 150 minutes
 - **Audience:** Participants who have completed LAB02 and LAB03
 
 This lab builds directly on LAB02 (Python/Pandas fundamentals) and LAB03 (Statistics & EDA). The data

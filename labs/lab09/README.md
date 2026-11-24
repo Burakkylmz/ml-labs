@@ -4,7 +4,7 @@
 
 - **Module:** Model Selection, Hyperparameter Optimization & Reproducibility
 - **Session:** 09
-- **Duration:** 150 minutes (10-minute break included), plus optional Advanced Challenges
+- **Duration:** 150 minutes, plus optional Advanced Challenges
 - **Audience:** Participants who have completed LAB02–LAB08
 
 This lab moves from "which features and model family" (LAB08) to "how do we reliably tune and

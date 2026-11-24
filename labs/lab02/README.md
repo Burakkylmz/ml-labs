@@ -4,7 +4,7 @@
 
 - **Module:** Python for Machine Learning & Data Manipulation
 - **Session:** 02
-- **Duration:** 150 minutes (including a 10-minute break)
+- **Duration:** 150 minutes
 - **Audience:** Beginner-level Python / Machine Learning participants
 
 ## Learning Objectives

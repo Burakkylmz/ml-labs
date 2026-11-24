@@ -3,7 +3,7 @@
 Bu rehber, `ml-labs` projesindeki **LAB07: Advanced Machine Learning & Ensemble Methods**
 çalışmasını kendi bilgisayarınızda Docker üzerinden nasıl çalıştıracağınızı adım adım açıklar.
 
-**Eğitim süresi:** 150 dakika (10 dakikalık mola dahil), artı isteğe bağlı Advanced Challenges
+**Eğitim süresi:** 150 dakika, artı isteğe bağlı Advanced Challenges
 
 > Bu LAB, **LAB02**, **LAB03**, **LAB04**, **LAB05** ve **LAB06**'nın devamıdır. Bu LAB'ları
 > tamamlamadıysanız önce [`doc/lab02_student_guide.md`](lab02_student_guide.md),
@@ -310,7 +310,7 @@ Notebook, aşağıdaki sırayla ilerler:
    görselleştirme), OOB evaluation, feature importance.
 4. **AdaBoost & Gradient Boosting** (30 dk) — AdaBoost'un sample-weight güncellemesi
    (`[SYNTHETIC]` etiketli küçük bir örnek), Gradient Boosting matematiği, learning rate deneyi,
-   boosting-stage log loss grafiği. **Break (10 dk)** bu section'ın sonundadır.
+   boosting-stage log loss grafiği.
 5. **XGBoost & LightGBM** (25 dk) — regularized objective, her iki kütüphane için hands-on,
    `num_leaves`/`max_depth` ilişkisi, isteğe bağlı bir Early Stopping örneği.
 6. **Comparative Model Benchmarking** (25 dk) — **LAB'ın en önemli bölümü.** 8 modelin aynı

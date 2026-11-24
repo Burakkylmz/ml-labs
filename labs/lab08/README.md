@@ -4,7 +4,7 @@
 
 - **Module:** Feature Engineering, Feature Selection & Explainability
 - **Session:** 08
-- **Duration:** 150 minutes (10-minute break included), plus optional Advanced Challenges
+- **Duration:** 150 minutes, plus optional Advanced Challenges
 - **Audience:** Participants who have completed LAB02–LAB07
 
 This lab moves beyond "which algorithm to use" (LAB07) into "which inputs and explanations

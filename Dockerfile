@@ -24,6 +24,6 @@ RUN uv sync --locked --no-install-project
 
 COPY . .
 
-EXPOSE 8888
+EXPOSE 8888 8000
 
 CMD ["jupyter", "lab", "--ip=0.0.0.0", "--port=8888", "--no-browser", "--allow-root"]

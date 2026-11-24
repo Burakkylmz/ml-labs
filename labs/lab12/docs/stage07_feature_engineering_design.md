@@ -54,9 +54,7 @@ olarak elenmemistir.
 ## 8. Product Diversity (Group C)
 
 **REJECTED.** `Product_Group_Diversity`, bu veri setinde **TUM 7030 shipment icin tam
-olarak 1** (sifir varyans) -- her shipment tek bir Product Group icerir. Bu, master
-prompt'un acikca sordugu "birden fazla product group normal mi?" sorusuna **ampirik bir
-HAYIR cevabidir**. Ablation sanity-check'i (F3 vs F0) bu bulguyu dogruladi: Ridge icin
+olarak 1** (sifir varyans) -- her shipment tek bir Product Group icerir. Bu veri kumesinde shipment basina birden fazla Product Group gozlenmemistir. Ablation sanity-check'i (F3 vs F0) bu bulguyu dogruladi: Ridge icin
 fark TAM SIFIR, Random Forest icin fark numeric noise seviyesinde (-0.57 USD).
 
 ## 9. Contract and Transport Features (Group D)

@@ -4,7 +4,7 @@ Bu rehber, `ml-labs` projesindeki **LAB09: Model Selection, Hyperparameter Optim
 Reproducibility** çalışmasını kendi bilgisayarınızda Docker üzerinden nasıl çalıştıracağınızı
 adım adım açıklar.
 
-**Eğitim süresi:** 150 dakika (10 dakikalık mola dahil), artı isteğe bağlı Advanced Challenges
+**Eğitim süresi:** 150 dakika, artı isteğe bağlı Advanced Challenges
 
 > Bu LAB, özellikle **LAB07** ve **LAB08**'in devamıdır. Bu LAB'ları tamamlamadıysanız önce
 > [`doc/lab07_student_guide.md`](lab07_student_guide.md) ve
@@ -177,7 +177,6 @@ satırını göreceksiniz. `config/settings.yaml`'da bu değer **`false`**'tur. 
    görselleştirme, Nested CV (kavramsal).
 3. **GridSearchCV** (20 dk) — search cost formülü, 8 aday, sonuç analizi, heatmap.
 4. **RandomizedSearchCV** (25 dk) — 4,800'lük bir uzaydan 8 örnek, search budget karşılaştırması.
-   **Break (10 dk)** bu section'ın sonundadır.
 5. **Model Comparison & Optimization Analysis** (20 dk) — E01-E07 karşılaştırması, 7
    görselleştirme.
 6. **Experiment Tracking & Reproducibility** (20 dk) — Experiment Registry, dataset/split

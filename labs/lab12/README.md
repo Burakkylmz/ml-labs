@@ -267,8 +267,7 @@ preprocessing is fit on fold-training data only; 2014/2015 targets are never rea
 
 - **Headline finding:** applying `log`/`log1p` to the target and inverse-transforming back
   to USD causes Ridge's pooled MAE to jump from **8,001.52 USD to 59,303.40 USD** (~7.4x
-  worse) — a dramatic, measured instance of the retransformation bias risk the Stage 06
-  master prompt flagged in advance. Random Forest, by contrast, improves marginally under
+  worse) — a dramatic, measured instance of the retransformation bias risk discussed in Stage 06. Random Forest, by contrast, improves marginally under
   the same transform.
 - **124 total CV fits** across all experiments; validated first as a plain Python script
   (66.7s) to isolate pipeline-logic correctness from Jupyter-kernel execution overhead,
@@ -402,9 +401,345 @@ Full detail: [`docs/stage09_model_experiment_design.md`](docs/stage09_model_expe
 [`docs/stage10_optimization_contract.md`](docs/stage10_optimization_contract.md) (a
 contract only — no search was executed).
 
+## Stage 10 — Hyperparameter Optimization, Controlled Search & Model Selection
+
+A ninth notebook (`lab12_stage10_hyperparameter_optimization.ipynb`) runs a bounded,
+pre-registered hyperparameter search (16 trials/model, including the Stage 09
+reference as trial T000) for the two shortlisted models — M04 (ExtraTrees) and M05
+(XGBoost) — on Stage 05's frozen CV, totaling 128 CV fits.
+
+| Model | Reference MAE | Best Trial MAE | Improvement vs Reference | Decision |
+|---|---:|---:|---:|---|
+| M04 — ExtraTrees | 5,880.35 | **5,686.34** (M04-T003) | **+3.30%** (4/4 folds consistent) | Preferred Tuned Candidate |
+| M05 — XGBoost | 5,818.29 | 5,818.29 (= reference) | +0.00% | Retain Stage 09 Reference (Tuning Benefit Inconclusive) |
+
+- **Honest, non-forced outcome:** none of XGBoost's 15 sampled configurations beat its
+  Stage 09 reference — the reference itself was retained rather than manufacturing an
+  improvement.
+- **Root-caused a real cross-session/cross-environment discrepancy** rather than
+  dismissing it: a controlled `n_jobs=1/2/4` experiment confirmed XGBoost's `hist`
+  tree_method has thread-count-dependent floating-point non-determinism (not a config
+  or leakage bug) — ExtraTrees reproduced at 0.000% discrepancy under the same test,
+  isolating the cause to XGBoost specifically. Docker and local executions even
+  selected a marginally different "best" XGBoost trial (~0.10% apart), which itself
+  reinforces rather than contradicts the "Inconclusive" finding.
+- **Caught and fixed a subtler bug in the selection logic itself**: comparing a
+  separately-recomputed reference value against the main search loop's own T000 trial
+  (two independent XGBoost fits of the identical config) could introduce spurious
+  non-zero deltas from floating-point noise alone. Fixed by anchoring all improvement
+  comparisons to T000's value from the same trial loop.
+- Both local and Docker clean-kernel executions completed with 0 errors; the fix was
+  re-verified against both environments.
+- **Provisional Stage 11 candidates**: Primary = M04 tuned (M04-T003), Alternative =
+  M05 reference (M05-T000) — explicitly **not** a final production model choice.
+
+Full detail: [`docs/stage10_optimization_design.md`](docs/stage10_optimization_design.md),
+[`docs/stage10_search_space_rationale.md`](docs/stage10_search_space_rationale.md),
+[`docs/stage10_optimization_results.md`](docs/stage10_optimization_results.md),
+[`docs/stage10_model_selection.md`](docs/stage10_model_selection.md), and
+[`docs/stage11_external_validation_contract.md`](docs/stage11_external_validation_contract.md)
+(a contract only — 2014 data was never read in this notebook).
+
+## Stage 11 — External Validation, Generalization Diagnostics & Model Acceptance
+
+A tenth notebook (`lab12_stage11_external_validation.ipynb`) scores the two frozen
+Stage 10 candidates on the **2014 external validation population** — the first time
+this period's targets are used anywhere in the project. Both candidates were fully
+refit from scratch on the entire eligible development population (2006–2013,
+N=4,987), not reused from Stage 10's fold-level fits, and scored exactly once.
+
+| Model | External MAE (2014) | Improvement vs B4 | Dev-CV MAE | Generalization Gap |
+|---|---:|---:|---:|---:|
+| **M04-T003 — ExtraTrees (Primary)** | **6,485.63** | **+33.6%** | 5,686.34 | +799.29 (+14.1%) |
+| M05-T000 — XGBoost (Alternative) | 6,591.33 | +32.5% | 5,818.29 | +773.04 (+13.3%) |
+| B4 — Hierarchical Median | 9,770.79 | — | — | — |
+| B1 — Global Mean | 11,111.03 | — | — | — |
+
+- **Development-CV ranking held on genuinely unseen data**: M04-T003 remains the
+  best model; both ML candidates beat both baselines by a wide margin.
+- **Nuanced, honestly-reported disagreement**: M05-T000 wins on more individual
+  shipments (51.3% vs 48.7%) but loses on aggregate MAE — a handful of large
+  disagreements (up to ~$21,490 on one shipment) pull its MAE up. Win-rate and MAE
+  are reported together, not substituted for each other.
+- **Stage 08-10's high-cost underprediction finding independently replicated**:
+  baselines still underpredict 100% of high-cost shipments on 2014; both ML models
+  reduce this to 89.9% — confirmed on data never used for that original finding.
+- **Quantified a real cross-environment reproducibility risk**: local vs Docker
+  execution of the identical frozen configuration shows ExtraTrees reproduces to
+  ~1e-11 USD (floating-point only), while XGBoost's aggregate MAE differs by only
+  ~0.10% but **individual shipment predictions can differ by up to $9,338** —
+  documented as a real model risk, not resolved by retuning, with no environment
+  cherry-picked.
+- **No production-readiness or SLA claim made**: no business-approved monetary
+  tolerance exists for this project; Stage 08's 5% criterion remains a provisional
+  engineering target only.
+- **2015 Protected Test was never opened**: no target parsing, aggregation, or
+  analysis was performed on it anywhere in this notebook.
+- **Decision: Accepted for Stage 12 (Primary: M04-T003)**, with M05-T000 retained
+  as a secondary comparison candidate rather than discarded.
+
+Full detail: [`docs/stage11_validation_design.md`](docs/stage11_validation_design.md),
+[`docs/stage11_external_validation_results.md`](docs/stage11_external_validation_results.md),
+[`docs/stage11_generalization_diagnostics.md`](docs/stage11_generalization_diagnostics.md),
+[`docs/stage11_model_risk_assessment.md`](docs/stage11_model_risk_assessment.md),
+[`docs/stage11_model_acceptance.md`](docs/stage11_model_acceptance.md), and
+[`docs/stage12_explainability_uncertainty_contract.md`](docs/stage12_explainability_uncertainty_contract.md)
+(a contract only — Stage 12 implementation has not begun).
+
+## Stage 12 — Model Explainability, Prediction Uncertainty & Time-Aware Conformal Calibration
+
+An eleventh notebook (`lab12_stage12_explainability_uncertainty.ipynb`) explains the
+frozen Stage 11 point predictor (M04-T003, refit-identity-verified to 0.000000 USD
+vs Stage 11's own 2014 predictions) and runs a **development-only** conformal
+interval research protocol — without changing the accepted model in any way.
+
+**Global/Local Explainability (Approved for Stage 13 Prototype):**
+- Permutation Importance (development population) and Grouped SHAP agree strongly
+  (Spearman rank correlation = 0.943); top features are `Line_Item_Qty_Sum` and
+  `Line_Item_Value_Sum`.
+- SHAP additivity verified exactly (max diff ~1.9e-10 USD, both ExtraTrees and the
+  secondary XGBoost comparison).
+- **Caught and fixed a real sign-flip bug during development**: the first
+  implementation negated sklearn's `permutation_importance` output, which already
+  returns correctly-signed values — this produced an entirely fabricated
+  "all-negative importance" result that was verified against a synthetic
+  signal/noise fixture and corrected before being reported.
+- Explanation stability across 3 independent background samples: perfectly stable
+  (rank range = 0); however, `tree_path_dependent` vs `interventional` SHAP
+  perturbation assumptions produce a real, material difference (~$1,231) for
+  `Line_Item_Qty_Sum` — documented as a genuine, unresolved attribution-method
+  sensitivity, not an error.
+- 5 deterministic local case studies (typical, high/low predicted, 2014 high-error,
+  2014 model-disagreement) explained via SHAP waterfall.
+
+**Time-Aware Conformal Calibration (Production Interval Not Approved):**
+- A `SplitConformalCalibrator` (absolute-residual split conformal, 10 unit tests)
+  was run across Stage 05's 4 frozen outer folds using a nested chronological
+  design (e.g., outer validation year 2010 ← calibration year 2009 ← inner training
+  2006–2008) — never touching 2014 or 2015.
+- A calibration-leakage demonstration confirmed the textbook risk empirically: using
+  a model's own training residuals for calibration produced a P90 residual 16.9%
+  narrower than the honest, held-out version.
+- **Systematic undercoverage at both tested levels**: 80% nominal → 73.0% empirical
+  (gap −7.0%); 90% nominal → 83.1% empirical (gap −6.9%), consistent across all 4
+  folds.
+- **High-cost shipments show severe interval undercoverage**: only 43.6% empirical
+  coverage at the 90% nominal level (vs. 83.1% overall) — an independent,
+  interval-level confirmation of Stage 11's 89.9% point-level underprediction
+  finding.
+- Decision: **Production Interval Not Approved** — intervals remain Research Only /
+  Disabled by Default; this does not change Stage 11's acceptance of the point
+  predictor itself.
+
+**Explicit distinction preserved throughout:** the frozen full-development point
+predictor (Object A) and the development-only research calibration replicas
+(Object B) are never the same fitted estimator, and this notebook never claims
+otherwise.
+
+Full detail: [`docs/stage12_explainability_design.md`](docs/stage12_explainability_design.md),
+[`docs/stage12_global_local_explanations.md`](docs/stage12_global_local_explanations.md),
+[`docs/stage12_explanation_reliability.md`](docs/stage12_explanation_reliability.md),
+[`docs/stage12_uncertainty_calibration_design.md`](docs/stage12_uncertainty_calibration_design.md),
+[`docs/stage12_interval_evaluation.md`](docs/stage12_interval_evaluation.md),
+[`docs/stage12_model_risk_decisions.md`](docs/stage12_model_risk_decisions.md), and
+[`docs/stage13_model_inference_contract.md`](docs/stage13_model_inference_contract.md)
+(a contract only — Stage 13 implementation has not begun).
+
+## Stage 13 — Model Persistence, Inference Pipeline, Artifact Governance, Security & Reproducibility
+
+A twelfth notebook (`lab12_stage13_model_persistence_inference.ipynb`) packages the
+Stage 11-accepted, Stage 12-explained frozen ExtraTrees model (M04-T003) as a
+versioned, checksummed, trusted-loading inference component — built on a real,
+tested, reusable Python package (`labs/lab12/inference/`), not reimplemented inside
+the notebook.
+
+- **Full-development refit identity**: refit from scratch on the full eligible
+  population (n=4,987) and verified against Stage 11's own 2014 predictions —
+  **0.000000 USD** difference (n=819).
+- **Versioned model bundle** (`artifacts/stage13_model_bundle/v1/`): a single fitted
+  `Pipeline` (preprocessing + ExtraTrees) plus manifest, feature schema,
+  preprocessing schema, model config, environment, and reference predictions — SHA-256
+  checksummed, immutable once written.
+- **Trusted, security-checked loading**: `joblib.load()` is never called directly —
+  `TrustedBundleLoader` verifies the artifact path, manifest, model identity,
+  SHA-256, and dependency compatibility first. 6/6 security failure-mode tests
+  (corrupted file, wrong model/trial ID, untrusted path, missing manifest,
+  dependency mismatch) correctly rejected; 3 additional tamper patterns detected in
+  Advanced Challenge 1.
+- **Real dependency-compatibility finding, caught and fixed during Docker
+  validation**: local runs Python 3.11.15, this project's Docker image runs Python
+  3.11.18. The original exact-match check correctly rejected this (fail-closed,
+  working as designed) — the policy was then deliberately refined to compare
+  `python_version` by major.minor only (patch releases don't affect pickle
+  compatibility) while keeping `sklearn_version` an exact-match requirement. After
+  the fix, the *same* bundle (identical SHA-256, not refit) loaded in both
+  environments with predictions agreeing to 7.28e-12 USD.
+- **Self-caught floating-point tolerance bug**: two notebook assertions originally
+  used strict `==` to compare ExtraTrees predictions; under `n_jobs=2`,
+  thread-order-dependent summation can introduce ~1e-11 USD noise even for a
+  deterministic estimator. Both were corrected to the same 1e-6 USD tolerance used
+  everywhere else in the notebook.
+- **Honest risk-flag finding**: `PREDICTION_OUTSIDE_REFERENCE_RANGE` almost never
+  fires for this model in practice — tree ensembles cannot extrapolate beyond
+  training-leaf values, so even an absurd input (qty=1,000,000, value=50,000,000)
+  produced a prediction well inside the training-observed range. Documented, not
+  hidden; the flag's logic was separately verified correct.
+- **Single/batch inference parity**: 0.00000000 USD difference across every tested
+  batch size; optional, bounded SHAP explanation (10/10 additivity checks passed,
+  max diff 5.09e-11 USD); uncertainty permanently `disabled` — `request_interval=True`
+  only adds an `INTERVAL_NOT_APPROVED` flag, never fabricated bounds.
+- **46 pytest unit/component tests** (`labs/lab12/tests/stage13/`, synthetic
+  fixtures) plus the notebook's own 17 real-artifact integration tests — both
+  layers passed in full, locally and in Docker.
+- **Stage 14 readiness: CONDITIONAL GO** — the point predictor and explainability
+  are Approved for Prototype; uncertainty/interval remains Research Only/Disabled by
+  Default; no production-readiness or business-SLA claim is made.
+
+Full detail: [`docs/stage13_artifact_design.md`](docs/stage13_artifact_design.md),
+[`docs/stage13_serialization_security.md`](docs/stage13_serialization_security.md),
+[`docs/stage13_feature_inference_contract.md`](docs/stage13_feature_inference_contract.md),
+[`docs/stage13_inference_architecture.md`](docs/stage13_inference_architecture.md),
+[`docs/stage13_explainability_risk_policy.md`](docs/stage13_explainability_risk_policy.md),
+[`docs/stage13_validation_results.md`](docs/stage13_validation_results.md), and
+[`docs/stage14_api_deployment_contract.md`](docs/stage14_api_deployment_contract.md).
+
+## Stage 14 (Phase A Only) — REST API, Docker Reuse & Automated Testing
+
+**Phase A complete; Phase B (2015 Protected Test) NOT started — awaiting
+explicit user approval.** A thirteenth notebook
+(`lab12_stage14_api_deployment.ipynb`) wraps the Stage 13
+`FreightCostPredictor` in a FastAPI service (`labs/lab12/api/`:
+`config.py`, `schemas.py`, `errors.py`, `app.py`) without reimplementing
+any of its validation, risk-flag, or explainability logic.
+
+- **No new Docker service**: the existing `ml-lab` container is reused
+  (`compose.yaml` gained a port mapping for the API; `CMD` is still
+  `jupyter lab`). Decision and rationale: D-157.
+- **Fail-closed startup/readiness**: the bundle loads exactly once at
+  service startup and is verified with a canary prediction; `/predict*`
+  returns 503 until that succeeds, `/health` and `/ready` are
+  deliberately separate.
+- **42 new automated tests** (`labs/lab12/tests/stage14/`, 8 contract-based
+  files + 1 real-`uvicorn`-subprocess Docker/live-server file) plus all
+  48 Stage 13 regression tests — **90/90 passed, local AND Docker**
+  (Python 3.11.15 / 3.11.18), bundle SHA-256 unchanged throughout.
+- **Real finding (D-162)**: the same ExtraTrees `n_jobs=2`
+  floating-point noise from Stage 13's D-154 reappeared at the API layer
+  (~1e-13 USD) and was handled with the same project-wide 1e-6 USD
+  tolerance policy — not a regression, a documented re-occurrence.
+- **Real finding (D-163)**: API latency is dominated by a fixed
+  per-call overhead, essentially flat from batch size 1 to 100;
+  `explain=true` adds a measurable per-row cost, numerically justifying
+  the existing `max_batch_explanations=10` limit.
+- **Security**: no endpoint, query parameter, or environment variable
+  can override the bundle path (`api/config.py` is a hardcoded constant);
+  verified by dedicated tests.
+- **Protected Test**: not opened, read, or referenced anywhere in Phase
+  A. A Pre-Test Freeze Manifest (`artifacts/stage14_pretest_freeze_manifest.json`)
+  records the frozen state (bundle hash, test results, cross-environment
+  parity) as the checkpoint Phase B would build on, without triggering it.
+- **Phase B readiness: CONDITIONAL GO** (see
+  [`docs/stage14_phase_a_final_report.md`](docs/stage14_phase_a_final_report.md)
+  for the full mandated report and explicit stop) — gated on the same
+  open risks as Stage 11/12/13 (no business SLA, high-cost
+  underprediction, D-006/D-007), plus the absence of
+  authentication/rate-limiting (out of scope for this prototype).
+
+Full detail: [`docs/stage14_api_implementation.md`](docs/stage14_api_implementation.md),
+[`docs/stage14_security_review.md`](docs/stage14_security_review.md),
+[`docs/stage14_test_results.md`](docs/stage14_test_results.md),
+[`docs/stage14_performance_benchmark.md`](docs/stage14_performance_benchmark.md),
+[`docs/stage14_pretest_freeze_manifest.md`](docs/stage14_pretest_freeze_manifest.md), and
+[`docs/stage14_phase_a_final_report.md`](docs/stage14_phase_a_final_report.md).
+
+## Stage 14 (Phase B Preparation Only) — Final Evaluation Infrastructure
+
+**Infrastructure built and tested; the 2015 Protected Test itself was
+NOT opened, read, or scored.** A new `labs/lab12/evaluation/` package
+(10 modules: `contracts`, `population`, `baselines`, `metrics`,
+`acceptance`, `freeze`, `gate`, `runner`, `cli`, `__init__`) implements
+the full final-evaluation pipeline, reusing `inference.predictor.FreightCostPredictor`
+without modification.
+
+- **Structurally, not just conventionally, gated**: `load_protected_population()`
+  requires an `UnlockToken` that only `PreUnlockGate.unlock()` can
+  produce, after 9 categories of checks (explicit authorization phrase,
+  frozen model identity, live bundle integrity, dataset/Stage 05
+  fingerprints, frozen evaluation code+protocol+acceptance-criteria
+  fingerprints, canonical runtime, no silent rerun, audit-log
+  writability) — verified by `tests/stage14_evaluation/test_structural_safety.py`
+  that neither pytest nor the Stage 14 notebook can reach it.
+- **55 new tests, all synthetic/development-only** — **145/145 tests
+  pass, local AND Docker** (Stage 13's 48 + Phase A's 42 + these 55),
+  bundle SHA-256 unchanged throughout.
+- **Frozen methodology, recovered from Stage 05/08/11, not reinvented**:
+  B1 (Global Mean) and B4 (Hierarchical Median, Shipment_Mode+INCO_Term,
+  min_support=10) baselines; MAE/RMSE/WAPE/Bias/Median/P90/P95/high-cost
+  metrics; the high-cost threshold itself reused unchanged from Stage 11
+  (23,897.32 USD, frozen before 2014 was ever read) rather than
+  recomputed from the period being scored.
+- **Technical acceptance thresholds are explicitly provisional, not a
+  business SLA** — `classify_acceptance()` never returns a
+  `business_approved`/`sla` field, by design and by test.
+- **Freeze Manifest v2** (`artifacts/stage14_evaluation_freeze_manifest_v2.json`)
+  supersedes, but does not overwrite, Phase A's v1 manifest — v1 did not
+  and could not cover evaluation-code/protocol/acceptance fingerprints
+  that didn't exist yet.
+- **Validation limitation (D-169)**: raw dataset access was blocked
+  during preparation. Baseline fitting against the real development
+  population was deferred to the separately authorized unlock run;
+  preparation-stage validation used only synthetic fixtures.
+- **The explicit unlock CLI (`evaluation/cli.py`) was implemented but
+  never invoked** — `PreUnlockGate.unlock()` was never called with the
+  real authorization phrase against the real dataset in this task.
+- **Phase B readiness (at preparation time): CONDITIONAL GO** (infrastructure-level; see
+  [`docs/stage14_phase_b_readiness_assessment.md`](docs/stage14_phase_b_readiness_assessment.md)).
+
+Full detail: [`docs/stage14_final_evaluation_protocol.md`](docs/stage14_final_evaluation_protocol.md),
+[`docs/stage14_metric_baseline_contract.md`](docs/stage14_metric_baseline_contract.md),
+[`docs/stage14_protected_test_authorization_procedure.md`](docs/stage14_protected_test_authorization_procedure.md),
+[`docs/stage14_evaluation_validation_results.md`](docs/stage14_evaluation_validation_results.md),
+[`docs/stage14_final_pretest_freeze.md`](docs/stage14_final_pretest_freeze.md),
+[`docs/stage14_phase_b_readiness_assessment.md`](docs/stage14_phase_b_readiness_assessment.md), and
+[`docs/stage14_pre_unlock_audit_report.md`](docs/stage14_pre_unlock_audit_report.md) (D-173/D-174/D-175 audit findings).
+
+## Stage 14 — Final Evaluation (2015 Protected Test, COMPLETE, One-Time)
+
+**With the user's explicit, separate authorization, the 2015 Protected
+Test was evaluated exactly once** (`python -m evaluation.cli unlock`).
+All pre-unlock gates passed, including the development-population B1
+integrity check (D-174) against the frozen Stage 11 reference
+(`10456.218411870865` USD) — matched exactly, *before* any 2015 row was
+read.
+
+- **n_protected_eligible = 392** (of 569 Protected_Test shipments).
+- **M04-T003: MAE = 8540.83 USD**, beating B4 (12233.66 USD) by
+  **30.2%** (threshold: ≥10%) — **ACCEPTED**.
+- Validity rate 100%, 0 negative predictions, high-cost underprediction
+  80.49% (vs. both baselines' 100% on the same period — the D-173
+  relative criterion).
+- **Real, unfavorable finding, reported as observed**: the Dev-CV→2014
+  generalization gap (+14.1%) accelerated to 2014→2015 (+31.7%) — but
+  B1 and B4 degraded by similar relative margins over the same
+  transition, suggesting a shared distribution shift rather than a
+  model-specific failure (not independently confirmed in this report).
+- Model bundle SHA-256 unchanged before/after; no retraining, no
+  retuning, no threshold changes after seeing results, no rerun
+  (`AlreadyEvaluatedError` guard now active).
+- **This result is a technical PoC acceptance, not a business-approved
+  SLA or production-deployment approval.**
+
+Full report: [`docs/stage14_final_evaluation_report.md`](docs/stage14_final_evaluation_report.md)
+(16-section final report: integrity, gates, audit trail, full metrics,
+Model Card, remaining limitations).
+
 ## Next Steps
 
-Stage 10 (Hyperparameter Optimization) may begin now that a model shortlist and
-optimization contract are documented — this lab deliberately stops here and does not
-begin Stage 10. D-006 (Weight), D-010 (Quantity/Value aggregation), and the lack of a
-business-approved improvement SLA remain open.
+LAB12's planned 14-stage scope is now complete. Remaining open items,
+unresolved by this evaluation and not expected to be: D-006 (Weight),
+D-007 (label timestamp), D-010 (Quantity/Value aggregation), the lack
+of a business-approved improvement SLA, the lack of
+authentication/rate-limiting on the API, and the unconfirmed
+distribution-shift hypothesis for the 2014→2015 gap acceleration. The
+uncertainty/interval output remains Research Only / Disabled by
+Default.

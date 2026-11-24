@@ -4,7 +4,7 @@
 
 - **Module:** Machine Learning for Time Series Forecasting
 - **Session:** 11
-- **Duration:** 150 minutes (10-minute break included), plus optional Advanced Challenges
+- **Duration:** 150 minutes, plus optional Advanced Challenges
 - **Audience:** Participants who have completed LAB02–LAB10
 
 This lab continues directly from LAB10: the same dataset, the same chronological split, and the

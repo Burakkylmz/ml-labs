@@ -723,8 +723,7 @@ derinleştirildi)
 - **Question:** Permutation importance ve ablation sonuclari birbiriyle tutarli mi?
 - **Evidence:** Value grubu YUKSEK permutation importance gosterdi (RF: 1158.83, Ridge:
   1840.54) AMA ablation'da cikarilmasi RF'yi iyilestirdi -- correlated feature'larin
-  (Line_Item_Value_Sum ile) importance'i "paylastigi" klasik senaryo (master prompt'un
-  ongordugu).
+  (Line_Item_Value_Sum ile) importance'i "paylastigi" klasik senaryo.
 - **Decision:** Permutation importance TEK BASINA feature'in production degerine karar
   vermek icin yeterli degildir -- ablation ile birlikte degerlendirilmelidir.
 - **Status:** Accepted
@@ -1063,3 +1062,1097 @@ derinleştirildi)
 - **Status:** Accepted
 - **Confidence:** High
 - **Related Artifacts:** `stage09_stage10_handoff.json`, `docs/stage10_optimization_contract.md`
+
+### D-085 — Stage 10 Optimization Protocol (Accepted)
+
+- **Question:** Stage 10 optimization, Stage 05-09'un dondurulmus kararlarini
+  degistirmeden mi yapiliyor?
+- **Evidence:** 5 gate (A-E) + Gate F (dependency compatibility) programatik olarak
+  dogrulandi ve PASSED.
+- **Decision:** Accepted -- butun gate'ler gecti, optimization'a izin verildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_environment_report.json`, `stage10_protocol_integrity.json`
+
+### D-086 — Pooled OOF MAE Search Objective (Accepted)
+
+- **Question:** Search objective'i, Stage 08-09'un pooled MAE tanimiyla nasil tutarli
+  tutulur?
+- **Decision:** `RandomizedSearchCV`'nin varsayilan fold-score-averaging mekanizmasi
+  **kullanilmadi** -- `ParameterSampler` + mevcut frozen CV runner (bounded manual
+  search) kullanildi, pooled-metric tanimi korundu.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_optimization_registry.json`
+
+### D-087 — Search Budget (Accepted)
+
+- **Question:** Search budget ne zaman ve nasil dondu?
+- **Decision:** 16 trial/model (T000 referans dahil) x 4 fold = 128 fit, hicbir trial
+  sonucu gorulmeden sabitlendi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_search_budget.json`, `stage10_trial_manifest.csv`
+
+### D-088 — ExtraTrees Search Space (Accepted)
+
+- **Question:** ExtraTrees icin hangi search space tanimlandi ve sonuc ne oldu?
+- **Evidence:** 5-boyutlu bounded space; en iyi trial M04-T003 (n_estimators=200,
+  min_samples_split=10, min_samples_leaf=2, max_features=0.8, max_depth=12) =
+  5686.34 USD, 4/4 fold'da tutarli +3.30% iyilesme.
+- **Decision:** Accepted -- M04-T003, Preferred Tuned Candidate.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_search_spaces.json`, `stage10_trial_results.csv`
+
+### D-089 — XGBoost Search Space (Inconclusive)
+
+- **Question:** XGBoost icin hangi search space tanimlandi ve sonuc ne oldu?
+- **Evidence:** 9-boyutlu bounded space; **hicbir sampled trial (15 aday) referansi
+  (T000) gecemedi** -- +0.00% iyilesme.
+- **Decision:** Tuning Benefit Inconclusive -- Stage 09 referansi korunuyor.
+- **Status:** Inconclusive
+- **Confidence:** High (negatif sonuc, ama saglam kanitla)
+- **Related Artifacts:** `stage10_search_spaces.json`, `stage10_trial_results.csv`
+
+### D-090 — Reference Configuration Policy (Accepted, Kritik Bulgu)
+
+- **Question:** Stage 09'un raporlanan referans skorlari bu oturumda yeniden
+  uretilebiliyor mu?
+- **Evidence:** M04 (ExtraTrees) **%0.000 fark** ile birebir reprodukte edildi. M05
+  (XGBoost) **%0.17 fark** gosterdi (bu oturum: 5818.29, Stage 09'un orijinal raporu:
+  5808.51). Kontrollu bir `n_jobs=1/2/4` deneyi, XGBoost'un `hist` tree_method'unun
+  thread-sayisina bagli floating-point non-determinism gosterdigini **kanitladi**.
+  Ayrica Docker'da calistirildiginda, M05'in "en iyi trial"i bile degisti (M05-T010
+  Docker'da, M05-T000 local'de, ~%0.10 fark).
+- **Decision:** Bu bir konfigurasyon/leakage hatasi DEGILDIR -- dokumante edilmis bir
+  XGBoost sinirlamasidir. Local sonuclar bu notebook'un canonical artifact'lari olarak
+  kabul edildi; Docker sonucu confirmatory bir diagnostic olarak kayit altina alindi.
+- **Status:** Accepted (documented limitation, not a bug)
+- **Confidence:** High (kontrollu deneyle dogrulandi)
+- **Related Artifacts:** `stage10_reproducibility_report.json`
+
+### D-091 — Trial Execution & Reproducibility (Accepted)
+
+- **Question:** Secilen trial'lar tekrar calistirildiginda ayni sonucu veriyor mu?
+- **Evidence:** M04'un en iyi trial'i (M04-T003) iki kez fit edildi, tahminler
+  `np.allclose` ile birebir eslesti.
+- **Decision:** Accepted.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_reproducibility_report.json`
+
+### D-092 — Hyperparameter Sensitivity (Accepted, Descriptive)
+
+- **Question:** Hangi parametreler Pooled MAE ile en yuksek korelasyonu gosteriyor?
+- **Evidence:** M04: `max_depth` (corr=-0.84), `min_samples_leaf` (corr=+0.45). M05:
+  `min_child_weight` (corr=+0.70), `max_depth` (corr=-0.54).
+- **Decision:** Bu korelasyonlar **descriptive**'dir -- 16 trial'lik kucuk bir
+  orneklemden geldigi icin causal bir hyperparameter importance iddiasi olarak
+  sunulmamaktadir.
+- **Status:** Accepted (descriptive only)
+- **Confidence:** Medium
+- **Related Artifacts:** `stage10_parameter_sensitivity.csv`
+
+### D-093 — Hyperparameter Interactions (Inconclusive)
+
+- **Question:** `learning_rate x n_estimators`, `max_depth x min_child_weight` gibi
+  interaction'lar gozlemlenebiliyor mu?
+- **Evidence:** Korelasyonlar hesaplandi (`stage10_parameter_interactions.csv`) ama
+  ornek buyuklugu (16 trial) kesin bir interaction kaniti icin yetersiz.
+- **Decision:** Inconclusive -- descriptive olarak raporlandi, kesin sonuc cikarilmadi.
+- **Status:** Inconclusive
+- **Confidence:** Low (kucuk ornek)
+- **Related Artifacts:** `stage10_parameter_interactions.csv`
+
+### D-094 — Optimization Improvement Assessment (Accepted)
+
+- **Question:** Hangi model tuning'den gercek fayda gordu?
+- **Decision:** M04: +3.30% (Preferred Tuned Candidate). M05: +0.00% (Retain
+  Reference, Inconclusive).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_baseline_comparison.csv`
+
+### D-095 — Generalization Gap & Temporal Stability (Accepted)
+
+- **Question:** M04'un tuned configuration'i overfitting riski tasiyor mu?
+- **Evidence:** M04 tuned Gen_Gap=2512.67 (referans 2179.13'ten biraz yuksek) ama 4/4
+  fold'da validation MAE'si hala daha iyi.
+- **Decision:** Gap artisi tek basina overfitting kaniti olarak yorumlanmadi --
+  temporal distribution shift confound'u acikca belirtildi.
+- **Status:** Accepted (with explicit confound caveat)
+- **Confidence:** Medium
+- **Related Artifacts:** `stage10_generalization_diagnostics.csv`, `stage10_temporal_stability.csv`
+
+### D-096 — High-Cost Shipment Risk (Accepted)
+
+- **Question:** Tuning, high-cost shipment performansini kotulestirdi mi?
+- **Evidence:** M04 tuned High-Cost MAE=17626.69 (referans 18353.31'den **daha iyi**).
+  M05 degismedi (17119.78).
+- **Decision:** Tuning, high-cost riskini kotulestirmedi -- her iki model icin de
+  kabul edilebilir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_tail_risk_analysis.csv`
+
+### D-097 — Negative Prediction Policy (Accepted)
+
+- **Question:** Negatif tahminler otomatik veto sebebi mi?
+- **Evidence:** M04: 0 negatif tahmin (referans ve tuned). M05: 3 negatif tahmin
+  (degismedi).
+- **Decision:** Negatif tahminler sayildi ve raporlandi, otomatik veto edilmedi --
+  raw (unclipped) scoring politikasi korundu.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_negative_prediction_audit.csv`
+
+### D-098 — Search Selection Optimism (Accepted, Acikca Belgelendi)
+
+- **Question:** Stage 10'un en iyi trial secimi bagimsiz bir dogrulama midir?
+- **Decision:** **HAYIR.** 16 configuration'in en iyisinin secilmesi development-CV'ye
+  adaptiftir -- Stage 11 (2014) ve Stage 14 (2015) bu nedenle korunmaktadir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `docs/stage11_external_validation_contract.md`
+
+### D-099 — Provisional Model Selection (Accepted)
+
+- **Question:** Stage 11'e hangi configuration'lar gonderiliyor?
+- **Decision:** Primary: M04 (ExtraTrees, M04-T003, 5686.34 USD). Alternative: M05
+  (XGBoost, M05-T000, 5818.29 USD). **Final model secimi burada YAPILMAMAKTADIR.**
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_model_selection.json`, `stage10_selected_configurations.json`
+
+### D-100 — Stage 11 External Validation Handoff (Accepted)
+
+- **Question:** Stage 11'e hangi sozlesme tasinacak?
+- **Decision:** Dataset/protokol fingerprint, dondurulmus feature set/preprocessing,
+  iki candidate configuration, metrik tanimlari, tie-breaking kurali belgelendi.
+  2014 bu notebookta hicbir sekilde kullanilmadi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage10_stage11_handoff.json`, `docs/stage11_external_validation_contract.md`
+
+### D-101 — Full Development Refit Policy (Accepted)
+
+- **Question:** Stage 11, Stage 10'un fold-bazli fit edilmis modellerini 2014
+  inference icin yeniden kullanabilir mi?
+- **Decision:** **HAYIR.** M04-T003 ve M05-T000 (ve B1/B4), butun eligible
+  development population (N=4987, 2006-2013) uzerinde sifirdan yeniden egitildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_development_refit_report.json`
+
+### D-102 — Evaluation Population Audit (Accepted)
+
+- **Question:** 2014'teki 910 shipment'in tamami otomatik olarak scorable midir?
+- **Evidence:** 910 toplam shipment, ancak sadece 819'u (`Has_Numeric_Target`)
+  numeric target'a sahip (%90.0 label coverage).
+- **Decision:** Eligibility, 910'u VARSAYMADAN bagimsiz olarak olculdu. Scoring
+  sadece 819 eligible shipment uzerinde yapildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_validation_population_audit.json`
+
+### D-103 — High-Cost Threshold Freezing Order (Accepted)
+
+- **Question:** High-cost threshold, 2014 target degerleri okunmadan once mi
+  dondu?
+- **Decision:** EVET. `HIGH_COST_THRESHOLD` (23,897.32 USD), full eligible
+  development targetlarinin P90'i olarak, 2014 degerleri okunmadan once hesaplandi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** notebook Section 05
+
+### D-104 — External Model Ranking Result (Accepted, Acikca Belgelendi)
+
+- **Question:** Development-CV ranking (M04 < M05) 2014'te korunuyor mu?
+- **Evidence:** M04-T003=6485.63 USD, M05-T000=6591.33 USD.
+- **Decision:** **EVET**, ranking korundu -- M04-T003 2014'te de en iyi model.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_external_metrics.csv`
+
+### D-105 — Paired Error / Win-Rate Nuance (Accepted, Acikca Belgelendi)
+
+- **Question:** MAE ranking tek basina yeterli bir karsilastirma midir?
+- **Evidence:** M05-T000 shipment-level win-rate=%51.3 (M04-T003'ten yuksek), ancak
+  MAE'de M04-T003 daha iyi -- bir dizi buyuk disagreement (en fazla ~21,490 USD)
+  M05-T000'in aggregate MAE'sini agirlikli olarak yukari cekiyor.
+- **Decision:** Win-rate ve MAE birlikte raporlandi; hicbiri tek basina nihai karar
+  olarak kullanilmadi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_paired_error_analysis.csv`
+
+### D-106 — Negative Prediction Re-Audit on 2014 (Accepted)
+
+- **Question:** M05'in bilinen negatif tahmin riski 2014'te gozlemleniyor mu?
+- **Evidence:** 0/819 negatif tahmin, her iki model icin de (0.0%).
+- **Decision:** Bu sample-ozel bir gozlemdir -- riskin ortadan kalktigi iddia
+  edilmemektedir; raw unclipped scoring korunmustur.
+- **Status:** Accepted
+- **Confidence:** Medium (tek sample'a dayanir)
+- **Related Artifacts:** `stage11_negative_prediction_audit.csv`
+
+### D-107 — High-Cost Underprediction Independent Replication (Accepted, Kritik Bulgu)
+
+- **Question:** Stage 08-10'un baseline %100 high-cost underprediction bulgusu
+  2014'te tekrarlaniyor mu?
+- **Evidence:** B1=%100.0, B4=%100.0 (2014); M04-T003=%89.9, M05-T000=%89.9.
+- **Decision:** Bulgu **bagimsiz olarak dogrulandi** -- ML modelleri riski azaltiyor
+  ama ortadan kaldirmiyor.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_tail_risk_analysis.csv`
+
+### D-108 — Generalization Gap Reporting (Accepted)
+
+- **Question:** Dev-CV -> External MAE farki nasil raporlanmali?
+- **Evidence:** M04-T003: +799.29 USD (+14.1%). M05-T000: +773.04 USD (+13.3%).
+- **Decision:** Gap raporlandi, ancak overfitting'e tek basina atfedilmedi --
+  farkli yil, farkli training size, selection exposure, temporal shift confound'lari
+  acikca belirtildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_generalization_gap.csv`
+
+### D-109 — Covariate Shift Finding (Accepted, Acikca Belgelendi)
+
+- **Question:** 2014'teki feature dagilimlari development'tan farkli mi?
+- **Evidence:** Line_Item_Qty_Sum median +75% (5478->9575), Line_Item_Value_Sum
+  median +17% (74200->86482); kategorik feature'larda 0 yeni kategori, ancak daha
+  dar cardinality (ornegin Country: 37->22).
+- **Decision:** Gercek bir covariate shift gozlemlendi ve risk dokumantasyonu olarak
+  raporlandi -- model/feature degisikligi icin KULLANILMADI.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_covariate_shift.csv`, `stage11_category_drift.csv`
+
+### D-110 — Label Coverage Stability (Accepted)
+
+- **Question:** Label coverage orani zamanla degisiyor mu?
+- **Evidence:** Development=%89.8, 2014=%90.0.
+- **Decision:** Coverage oran istikrarli -- missing-not-at-random mekanizmasinin
+  zamanla degistigine dair kanit yok (ancak mekanizmanin kendisi hala bilinmiyor).
+- **Status:** Accepted
+- **Confidence:** Medium
+- **Related Artifacts:** notebook Section 08
+
+### D-111 — Cross-Environment Reproducibility Audit (Accepted, Kritik Bulgu)
+
+- **Question:** Stage 10'un XGBoost thread-dependent non-determinism bulgusu,
+  Stage 11'in gercek local/Docker calistirmasinda da gozlemleniyor mu?
+- **Evidence:** M04-T003 max abs prediction diff=2.91e-11 USD (etkin olarak ozdes).
+  M05-T000 max abs prediction diff=**9338.69 USD**, median=308.28 USD -- aggregate
+  MAE farki yalnizca ~%0.10 (6591.33 vs 6598.21) iken, tekil shipment tahminleri
+  cok daha fazla degisebiliyor.
+- **Decision:** Bulgu dogrulandi ve nicellendirildi; ranking (M04<M05) iki ortamda
+  da ayni kaldi -- "Inconclusive" degil, ama M05'in tekil-tahmin seviyesinde
+  reproducibility riski acikca belgelendi. Hicbir ortam cherry-pick edilmedi; local
+  canonical olarak korundu.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_reproducibility_report.json`
+
+### D-112 — Fair Comparison Gate Enforcement (Accepted)
+
+- **Question:** 4 predictor (M04-T003, M05-T000, B1, B4) ayni shipment set'i
+  uzerinde mi karsilastirildi?
+- **Decision:** EVET, programatik `assert` ile dogrulandi -- 819 eligible shipment,
+  hepsi icin ozdes.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** notebook Section 06
+
+### D-113 — Bootstrap Uncertainty Scope Limitation (Accepted)
+
+- **Question:** External MAE farki icin bir uncertainty tahmini sunulmali mi?
+- **Evidence:** M04-T003 bootstrap (n=500) mean=6472.71, [P2.5,P97.5]=[5843.21,
+  7175.73]; M05-T000'in nokta MAE'si (6591.33) bu aralik icinde.
+- **Decision:** Bootstrap sunuldu ama **resmi bir confidence interval olarak
+  degil** (i.i.d. varsayimi zayif) -- acceptance karari bununla degistirilmedi.
+- **Status:** Accepted
+- **Confidence:** Medium
+- **Related Artifacts:** notebook Advanced Challenge 4
+
+### D-114 — Model Acceptance Decision (Accepted)
+
+- **Question:** Hangi candidate Stage 12'ye kabul ediliyor?
+- **Decision:** **Accepted for Stage 12 (Primary: M04-T003).** M05-T000 ikincil
+  karsilastirma olarak korunuyor, atilmiyor.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_model_acceptance.json`
+
+### D-115 — No Business SLA Claim (Accepted, Kritik Kisitlama)
+
+- **Question:** Bu stage "production-ready" veya "SLA satisfied" sonucu uretebilir
+  mi?
+- **Decision:** **HAYIR.** Business-approved monetary tolerance yok. Stage 08'in
+  %5 kriteri sadece provisional engineering target'tir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage11_model_acceptance.md`
+
+### D-116 — 2015 Protected Test Isolation Confirmed (Accepted)
+
+- **Question:** 2015 verisi bu notebookta herhangi bir sekilde okundu/analiz
+  edildi mi?
+- **Decision:** **HAYIR.** `shipment_view` 2015 kayitlarini yapisal olarak
+  icerebilir, ancak hicbir hucre 2015 `Freight_Cost_USD` degerini okumadi,
+  aggregate etmedi veya kullanmadi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** notebook Section 03
+
+### D-117 — Stage 12 Explainability/Uncertainty Candidate Priority (Accepted)
+
+- **Question:** Stage 12, hangi candidate'a oncelik vermeli?
+- **Decision:** M04-T003 (ExtraTrees) birincil explainability hedefi; M05-T000
+  (XGBoost) ikincil karsilastirma -- ikisi arasindaki yakinlik (bootstrap
+  overlap) nedeniyle M05 atilmadi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_explainability_uncertainty_contract.md`
+
+### D-118 — Stage 12 Calibration Data Policy (Accepted)
+
+- **Question:** Stage 12, 2014 external validation label'larini calibration
+  fitting icin kullanabilir mi?
+- **Decision:** **HAYIR.** 2014 label'lari sadece diagnostic/evaluation amacli
+  kullanilabilir -- calibration fitting icin training-period OOF residuals veya
+  zaman-izole bir development subset kullanilmali.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_explainability_uncertainty_contract.md`
+
+### D-119 — Stage 12 Explainability Contract (Accepted)
+
+- **Question:** Stage 12'de hangi model aciklanacak ve hangi kisitlamalar
+  gecerli olacak?
+- **Decision:** M04-T003 (ExtraTrees) birincil aciklama hedefi, M05-T000
+  (XGBoost) ikincil karsilastirma. Model degistirilmedi, yeniden tune edilmedi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_integrity_report.json`
+
+### D-120 — Frozen Model Attribution (Accepted)
+
+- **Question:** Stage 11'in fitted estimator'i persist edilmedigi icin
+  explainability amacli yeniden fit, Object A ile ayni mi?
+- **Evidence:** Refit model, Stage 11'in 2014 external predictions'i ile
+  **0.000000 USD** farkla eslesti (n=819).
+- **Decision:** Refit, numerical identity check ile dogrulanmis bicimde
+  Object A'nin gecerli bir temsilidir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** notebook Section 04
+
+### D-121 — Global Importance Methodology (Accepted)
+
+- **Question:** Hangi global importance yontemleri kullanilacak?
+- **Decision:** Impurity-based Tree Importance + Permutation Importance
+  (development population, MAE scoring) + Mean Absolute SHAP (TreeExplainer).
+  Uc yontem birbirini tamamlar, tek basina hicbiri yeterli kabul edilmedi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_tree_importance.csv`, `stage12_permutation_importance.csv`, `stage12_global_shap_importance.csv`
+
+### D-122 — SHAP Attribution Semantics (Accepted)
+
+- **Question:** SHAP additivity dogrulandi mi ve output scale dogru mu?
+- **Evidence:** Max additivity diff=1.89e-10 USD (n=200), tum SHAP degerleri
+  finite, output scale=raw USD.
+- **Decision:** SHAP additivity PASSED -- model attribution olarak
+  guvenilir, ama **nedensel kanit olarak kullanilmadi**.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_shap_additivity_audit.json`
+
+### D-123 — Encoded Feature Grouping (Accepted)
+
+- **Question:** One-hot dummy columns'un SHAP degerleri raw feature
+  seviyesine nasil toplanacak?
+- **Decision:** Row-bazinda SIGNED toplam (her dummy'nin mean absolute
+  SHAP'ini toplamaktan FARKLI) -- bu metodoloji acikca dokumante edildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_grouped_shap_importance.csv`
+
+### D-124 — SHAP Additivity Audit (Accepted)
+
+- **Question:** SHAP degerleri, baseline + sum(phi) = prediction ozelligini
+  karsiliyor mu?
+- **Evidence:** Primary max diff=1.89e-10 USD, Secondary (XGBoost) max
+  diff=0.070312 USD -- ikisi de tolerance (<1.0 USD) icinde.
+- **Decision:** Additivity PASSED, her iki model icin.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_shap_additivity_audit.json`
+
+### D-125 — Local Explanation Policy (Accepted)
+
+- **Question:** Hangi shipment'lar local explanation icin secilecek?
+- **Decision:** 5 deterministic case (Typical, High-Predicted,
+  Low-Predicted, High-Error-2014, Model-Disagreement-2014) -- 2014'ten
+  secilen vakalar SADECE aciklama/risk amaclidir, yeni tuning icin
+  kullanilmamistir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_local_explanations.csv`
+
+### D-126 — Correlated Feature Reliability (Accepted)
+
+- **Question:** Stage 07'nin correlated-feature bulgusu SHAP/Permutation
+  merceginden nasil gorunuyor?
+- **Evidence:** Qty ve Value feature'lari her iki yontemde de en yuksek iki
+  importance -- Stage 07'nin redundancy bulgusuyla tutarli.
+- **Decision:** Bulgu dogrulandi ama CAUSAL bir cikarim olarak sunulmadi.
+- **Status:** Accepted
+- **Confidence:** Medium
+- **Related Artifacts:** notebook Advanced Challenge 2
+
+### D-127 — Explanation Stability (Accepted)
+
+- **Question:** SHAP attribution'lari farkli background sample ve
+  perturbation assumption altinda stabil mi?
+- **Evidence:** 3 background seed arasinda rank range=0 (PERFECT stabilite);
+  tree_path_dependent vs interventional, Line_Item_Qty_Sum icin ~1231 USD
+  materyal fark gosterdi.
+- **Decision:** Background-sample stabilitesi yuksek; perturbation-assumption
+  sensitivity gercek ve dokumante edilmis bir sinirlamadir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_explanation_stability.csv`
+
+### D-128 — Uncertainty Quantification Scope (Accepted)
+
+- **Question:** Stage 12'nin uncertainty calismasi hangi nesneye uygulanir?
+- **Decision:** Object B (development-only research replicas) -- Object A
+  (frozen full-development point predictor) DEGISTIRILMEDI veya
+  recalibrate edilmedi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** notebook Section 17
+
+### D-129 — Time-Aware Calibration Protocol (Accepted)
+
+- **Question:** Calibration/inner-training/evaluation donemleri nasil
+  ayrilacak?
+- **Decision:** Stage 05'in 4 frozen outer fold'u icinde, training
+  history'nin son calendar year'i calibration, kalani inner training --
+  tum invariant'lar (no overlap, no inversion) programatik dogrulandi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_temporal_calibration_manifest.csv`
+
+### D-130 — Calibration Data Separation (Accepted, Demonstrasyonla Dogrulandi)
+
+- **Question:** Calibration leakage'in gercek etkisi nedir?
+- **Evidence:** Leaky (in-sample) P90=7,900.34 USD vs honest (held-out)
+  P90=9,511.30 USD -- leaky versiyon **%16.9 daha dar**.
+- **Decision:** Notebook'un gercek calibration'inda SADECE honest
+  (held-out) residuals kullanildi; leaky yaklasim demonstrasyon amacli
+  izole edildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** notebook Section 15
+
+### D-131 — Conformal Quantile Policy (Accepted)
+
+- **Question:** Quantile index nasil hesaplanacak ve sample size yetersizse
+  ne olacak?
+- **Decision:** $k=\lceil (n_{cal}+1)(1-\alpha)\rceil$, capped at $n_{cal}$;
+  `minimum_calibration_samples` esigi altinda `ValueError` firlatilir
+  (sessiz fallback yok). 10 unit test ile dogrulandi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** notebook Section 16 (unit tests)
+
+### D-132 — Empirical Coverage Evaluation (Accepted, Kritik Bulgu)
+
+- **Question:** Prediction interval'lar nominal coverage seviyesine ulasiyor
+  mu?
+- **Evidence:** 80% nominal -> %73.0 empirical (gap -7.0%); 90% nominal ->
+  %83.1 empirical (gap -6.9%).
+- **Decision:** Sistematik undercoverage gozlemlendi ve acikca raporlandi
+  -- coverage guarantee iddia EDILMEDI.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_interval_metrics.csv`
+
+### D-133 — Conditional Coverage Risk (Accepted)
+
+- **Question:** Segment-seviyesinde coverage, overall'dan farkli mi?
+- **Evidence:** 92 segment-satirindan 30'u minimum support (n<20) esigini
+  gecemedi.
+- **Decision:** Yetersiz-support segmentler acikca flaglendi; marginal
+  conformal guarantee'nin segment-seviyesinde gecerli olmadigi acikca
+  belirtildi.
+- **Status:** Accepted
+- **Confidence:** Medium
+- **Related Artifacts:** `stage12_conditional_coverage.csv`
+
+### D-134 — High-Cost Interval Reliability (Accepted, En Kritik Bulgu)
+
+- **Question:** High-cost shipment'lar icin interval coverage guvenilir mi?
+- **Evidence:** High-cost (90% nominal) coverage ortalamasi=**%43.6** (vs
+  overall %83.1) -- Stage 11'in %89.9 point-level underprediction bulgusuyla
+  dogrudan tutarli.
+- **Decision:** High-cost segment icin interval'lar GUVENILMEZ olarak
+  isaretlendi -- bu bulgu Model Risk R2'ye dogrudan kanit saglar.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_tail_coverage_analysis.csv`
+
+### D-135 — Production Interval Approval Status (Accepted)
+
+- **Question:** Object B'nin interval'lari production kullanimi icin
+  onaylanabilir mi?
+- **Decision:** **"Production Interval Not Approved."** Overall ve
+  high-cost undercoverage, bu statuyu gerektirecek kadar buyuk. Bu karar
+  SADECE Object B icindir, Object A'nin (Stage 11) kabul durumunu
+  degistirmez.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_output_classification.csv`, `stage12_model_risk_summary.json`
+
+### D-136 — Stage 13 Model Inference Handoff (Accepted)
+
+- **Question:** Stage 13'e hangi sozlesme tasinacak?
+- **Decision:** Point predictor + explainability "Approved for Stage 13
+  Prototype"; uncertainty/interval "Research Only / Disabled by Default."
+  Stage 13 readiness: **CONDITIONAL GO.**
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage12_stage13_handoff.json`, `stage13_model_inference_contract.md`
+
+### D-137 — Stage 13 Artifact Packaging Contract (Accepted)
+
+- **Question:** Stage 13 hangi scope'ta artifact uretecek?
+- **Decision:** Tek bir versioned bundle (`stage13_model_bundle/v1/`) --
+  model + preprocessing + manifest + schema + environment metadata
+  BIRLIKTE. Yeni model training/tuning YAPILMADI.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_artifact_design.md`
+
+### D-138 — Frozen Model Serialization (Accepted)
+
+- **Question:** Hangi serialization format kullanilacak?
+- **Decision:** `joblib` -- mevcut proje bagimliligi, sklearn/numpy icin
+  verimli. skops.io/ONNX teorik olarak degerlendirildi (Advanced Challenge 4)
+  ama mevcut format DEGISTIRILMEDI.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_serialization_security.md`
+
+### D-139 — Full Pipeline Persistence (Accepted)
+
+- **Question:** Model ve preprocessing ayri mi persist edilecek?
+- **Decision:** **HAYIR.** Tek bir fitted `Pipeline` (preprocessing +
+  ExtraTrees) persist edildi -- training-inference skew riski bu sekilde
+  elimine edildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_model_bundle/v1/model.joblib`
+
+### D-140 — Model Bundle Versioning (Accepted)
+
+- **Question:** Bundle versioning policy nedir?
+- **Evidence:** `write_bundle()`, mevcut non-empty version directory
+  uzerine overwrite'i REFUSE eder (test edildi).
+- **Decision:** Artifact version immutable; degisiklik gerekiyorsa yeni
+  version directory ACILIR.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_artifact_integrity` test suite
+
+### D-141 — Artifact Manifest (Accepted)
+
+- **Question:** Manifest hangi bilgileri tasimali?
+- **Decision:** Model identity, data/feature/preprocessing lineage,
+  runtime versions, risk governance -- hepsi gercek artifact'lardan
+  dolduruldu, placeholder YOK.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_model_bundle/v1/manifest.json`
+
+### D-142 — SHA-256 Integrity Policy (Accepted)
+
+- **Question:** Artifact integrity nasil dogrulanacak?
+- **Decision:** `model.joblib`'in SHA-256'si manifest'te saklanir,
+  yukleme ONCESI yeniden hesaplanip karsilastirilir. Circular dependency
+  yok (manifest kendi hash'ini icermez).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_artifact_security_tests.csv`
+
+### D-143 — Trusted Artifact Loading (Accepted)
+
+- **Question:** `joblib.load()` dogrudan cagrilabilir mi?
+- **Decision:** **HAYIR.** `TrustedBundleLoader`, path/manifest/identity/
+  SHA-256/dependency kontrollerini `joblib.load()`'dan ONCE yapar. 6/6
+  security failure-mode test PASSED.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_serialization_security.md`
+
+### D-144 — Dependency Compatibility Policy (Accepted, Gercek Bulguyla Duzeltildi)
+
+- **Question:** Runtime dependency version uyumsuzlugu nasil ele alinmali?
+- **Evidence:** Local (Python 3.11.15) ile Docker image (Python 3.11.18)
+  arasinda gercek bir patch-version farki bulundu -- ilk strict exact-match
+  politika bunu dogru REJECT etti.
+- **Decision:** `python_version` artik SADECE major.minor karsilastirilir
+  (patch surumleri pickle uyumlulugunu etkilemez); `sklearn_version` HALA
+  exact-match gerektirir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_dependency_compatibility.json`, `inference/model_loader.py`
+
+### D-145 — Feature Schema Validation (Accepted)
+
+- **Question:** Field presence ve value missingness ayri mi
+  kontrol edilmeli?
+- **Decision:** **EVET.** Tum Minimal Core feature'lari required (field
+  presence), ama deger NaN/None olabilir (missingness, imputation'a
+  birakilir).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `inference/schemas.py`, `stage13_schema_validation_results.csv`
+
+### D-146 — Feature Engineering Parity (Accepted)
+
+- **Question:** Raw-line-item-to-shipment ETL Stage 13'te yeniden mi
+  implement edilecek?
+- **Decision:** **HAYIR.** Canonical input zaten shipment-seviyesinde --
+  ayri bir `feature_adapter.py` gereksiz bulundu, scope acikca sinirlandi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_feature_inference_contract.md` Section 7
+
+### D-147 — Single Prediction Contract (Accepted)
+
+- **Question:** `predict_one()` interface'i nasil tanimlanmali?
+- **Decision:** `predict_one(shipment, explain=False, request_interval=False)
+  -> PredictionResult`, internally `predict_batch([shipment])[0]` cagirir
+  (duplikasyon yok).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `inference/predictor.py`
+
+### D-148 — Batch Prediction Contract (Accepted)
+
+- **Question:** Batch validation policy nedir?
+- **Decision:** Atomic batch validation -- tek bir satirin schema hatasi
+  TUM batch'i reddeder. Max batch size=100 (config'den).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_batch_parity.csv`
+
+### D-149 — Prediction Validity Policy (Accepted)
+
+- **Question:** Negatif/non-finite prediction nasil ele alinmali?
+- **Decision:** Non-finite -> `PredictionValidationError`. Negatif ->
+  `prediction_validity="invalid"`, **clip EDILMEZ**, acik `invalid_reason`
+  ile raporlanir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `inference/predictor.py`
+
+### D-150 — Optional Explainability Integration (Accepted)
+
+- **Question:** Explainability default olarak acik mi olmali?
+- **Decision:** **HAYIR**, `explain=False` default. Bounded
+  (`max_batch_explanations=10`), versioned, auditable.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_explainability_results.csv`
+
+### D-151 — SHAP Additivity & Metadata (Accepted)
+
+- **Question:** Her local explanation additivity kontrolu iceriyor mu?
+- **Evidence:** 10/10 test shipment'ta additivity PASSED (max diff=5.09e-11 USD).
+- **Decision:** EVET, her explanation additivity_valid/additivity_diff_usd
+  tasir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_shap_additivity_audit.json`
+
+### D-152 — Deterministic Risk Flags (Accepted, Gercek Bulguyla Genisletildi)
+
+- **Question:** Risk flag'leri label-based threshold'lara mi dayaniyor?
+- **Evidence:** `PREDICTION_OUTSIDE_REFERENCE_RANGE`, extreme input'ta
+  bile TETIKLENMEDI -- tree ensemble extrapolation yapamadigi icin.
+- **Decision:** Flag'ler SADECE training-only istatistik/girdi yapisina
+  dayanir; bu sinirlama acikca belgelendi, GIZLENMEDI.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_risk_flag_tests.csv`
+
+### D-153 — Uncertainty Disabled Policy (Accepted)
+
+- **Question:** `request_interval=True` interval dondurur mu?
+- **Decision:** **HAYIR.** Sadece `INTERVAL_NOT_APPROVED` flag eklenir --
+  Stage 12'nin "Production Interval Not Approved" karari aynen korunur.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_stage14_handoff.json`
+
+### D-154 — Serialization Parity Tolerance Policy (Accepted, Hata Duzeltmesiyle)
+
+- **Question:** Parity kontrolleri exact `==` mi, tolerance-based mi
+  olmali?
+- **Evidence:** Docker'da calistirilirken, iki strict `==` assertion
+  (reordered-keys, post-security-test sanity check) basarisiz oldu --
+  ExtraTrees `n_jobs=2` ile predict() sirasinda thread-order'a bagli
+  ~1e-11 USD floating-point gurultusu gozlemlendi.
+- **Decision:** Her iki assertion, projenin diger tum parity
+  kontrolleriyle TUTARLI bicimde 1e-6 USD tolerance'a DUZELTILDI.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_validation_results.md` Section 13
+
+### D-155 — Cross-Environment Reproducibility (Accepted)
+
+- **Question:** Local'de uretilen bundle Docker'da (refit edilmeden)
+  dogru yukleniyor mu?
+- **Evidence:** Ayni SHA-256 (refit YOK), 25 shipment uzerinde max
+  diff=7.28e-12 USD.
+- **Decision:** EVET, cross-environment parity dogrulandi (D-144'teki
+  policy duzeltmesi sonrasinda).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_local_docker_parity.csv`, `stage13_reproducibility_report.json`
+
+### D-156 — Stage 14 API Handoff (Accepted)
+
+- **Question:** Stage 14'e hangi sozlesme tasinacak?
+- **Decision:** `FreightCostPredictor` tek public interface; artifact
+  loading/explainability/risk-flag/interval policy'leri Stage 14'e
+  DEGISTIRILMEDEN tasinir. Stage 14 readiness: **CONDITIONAL GO.**
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage13_stage14_handoff.json`, `stage14_api_deployment_contract.md`
+
+## Stage 14 (Phase A) — REST API, Docker Reuse, Automated Testing
+
+### D-157 — Dedicated API Docker Service Degerlendirmesi (Accepted)
+
+- **Question:** Stage 14 icin ayri bir Docker servisi mi olusturulmali?
+- **Evidence:** `compose.yaml`/`Dockerfile` incelendi -- tek bir `ml-lab`
+  servisi var, tum repo bind-mount, `jupyter lab` CMD. Contract Section
+  14 mevcut servisin reuse edilmesini acikca istiyor.
+- **Decision:** **HAYIR**, ayri servis olusturulmadi. `compose.yaml`'a
+  `127.0.0.1:8000:8000` port mapping'i ve `Dockerfile`'a `EXPOSE 8000`
+  eklendi (additive); CMD degismedi, mevcut jupyter workflow korundu.
+  API, manuel `uv run uvicorn ...` veya testin kendi subprocess fixture'i
+  ile baslatiliyor.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `compose.yaml`, `Dockerfile`, `stage14_api_implementation.md` §7
+
+### D-158 — Request Body Validasyonu Duplike Edilmedi (Accepted)
+
+- **Question:** API katmani kendi (Pydantic, sabit alanli) request
+  schema'sini mi tanimlamali, yoksa `FeatureSchemaValidator`'a mi
+  devretmeli?
+- **Decision:** **Devretmeli.** Request body `await request.json()` ile
+  ham okunur, `predictor.predict_one/predict_batch`'e DOGRUDAN verilir.
+  Iki paralel validasyon kaynagi (D-146'nin ayni mantigi) contract
+  drift riski tasir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `api/app.py`, `api/schemas.py`
+
+### D-159 — Error Code Extraction & HTTP Status Mapping (Accepted)
+
+- **Question:** `inference` paketinin `"CODE: detail"` formatli exception
+  mesajlari HTTP response'a nasil tasinmali?
+- **Decision:** `error_code` alani mesajin ilk `":"`'den once gelen
+  token'dan cikarilir (bilinen kod listesine karsi dogrulanir, bilinmeyen
+  durumda `VALIDATION_ERROR`'a duser); tum error response'lar tek bir
+  `{error_code, detail}` sekli kullanir (Section 10/11).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `api/errors.py`, `test_error_contract.py`
+
+### D-160 — Startup-Time Single Load, Fail-Closed Readiness (Accepted)
+
+- **Question:** Predictor her request'te mi, yoksa bir kez mi
+  yuklenmeli; yukleme basarisiz olursa servis ne yapmali?
+- **Decision:** `lifespan` ile **tam olarak bir kez** yuklenir + sabit
+  canary shipment ile dogrulanir. Basarisizlikta process CRASH ETMEZ,
+  `app.state.ready=False` kalir, `/predict*` 503 doner, `/health` hala
+  200 doner (process-alive != ready ayrimi).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `api/app.py: lifespan`, `test_health_readiness.py`
+
+### D-161 — Live-Server Integration Test Katmani (Accepted)
+
+- **Question:** "Docker service integration test" (contract Section 16),
+  in-process `TestClient`'tan nasil AYRISTIRILIR?
+- **Decision:** Ayri bir katman: session-scoped `live_server` fixture,
+  gercek bir `uvicorn` subprocess'ini gercek bir TCP port'a bind eder,
+  testler `httpx` ile GERCEK HTTP uzerinden cagirir. Local'de ve Docker
+  container'i icinde AYNI suite calistirilir -- fark sadece calistirma
+  ortami, test kodu degismez.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `tests/stage14/conftest.py: live_server`, `test_docker_live_server.py`
+
+### D-162 — Floating-Point Tolerance Policy API Katmanina Genisletildi (Accepted, Gercek Bulguyla)
+
+- **Question:** API katmaninda batch-of-N vs N x batch-of-1, veya iki
+  ayri yuklenen predictor instance'i arasinda prediction karsilastirmasi
+  exact `==` mi olmali?
+- **Evidence:** Local'de 1, Docker'da 2 test, `prediction_usd` alaninda
+  ~1e-13 - ~3e-13 USD farkla basarisiz oldu -- Stage 13'un D-154'uyle
+  AYNI kok neden (ExtraTrees `n_jobs=2` thread-order-dependent summation),
+  bu kez API katmaninda tekrar gozlemlendi.
+- **Decision:** `test_predict_batch.py` ve `test_model_parity.py`'deki
+  ilgili assertion'lar, projenin geri kalaniyla TUTARLI olacak sekilde
+  1e-6 USD tolerance'a cevrildi; diger tum alanlar (model_id, risk_flags,
+  prediction_validity) hala TAM esitlikle kontrol edilir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `test_predict_batch.py`, `test_model_parity.py`, `stage14_test_results.md` §3
+
+### D-163 — API Latency Batch-Size'tan Bagimsiz (Accepted, Gercek Bulgu)
+
+- **Question:** Batch prediction, latency acisindan tekil cagrilara
+  kiyasla olceklenir mi?
+- **Evidence:** `batch=1` ile `batch=100` arasinda p50 latency
+  istatistiksel olarak ayirt edilemez (~30-40ms local, ~60-65ms Docker)
+  -- `ExtraTreesRegressor.predict()`'in `n_jobs=2` thread-pool dispatch
+  maliyeti bu aralikta DOMINANT. `explain=true` satir basina ~10ms
+  ekliyor, bu da `max_batch_explanations=10` siniri icin ek bir sayisal
+  gerekce saglar.
+- **Decision:** Bulgu belgelendi (gizlenmedi); Phase A herhangi bir
+  "production throughput SLA'si" iddia ETMEZ -- sadece gozlem.
+- **Status:** Accepted
+- **Confidence:** Medium (tek host, tek calistirma ortami; sustained-load
+  testi yapilmadi)
+- **Related Artifacts:** `artifacts/stage14_performance_benchmark.json`, `stage14_performance_benchmark.md`
+
+### D-164 — Pre-Test Freeze Manifest & Phase B Gating (Accepted)
+
+- **Question:** Phase B (2015 Protected Test) baslamadan once hangi
+  durum "dondurulmus" olarak kayit altina alinmali?
+- **Decision:** `stage14_pretest_freeze_manifest.json`: model bundle
+  SHA-256 (Phase A basi/sonu ayni), test sonuclari (90/90, local+Docker),
+  cross-environment parity, ve `protected_test_policy.accessed_in_phase_a:
+  false`. Bu manifest Phase B'yi TETIKLEMEZ -- sadece referans
+  noktasidir. Phase B'nin fiilen baslamasi kullanicinin ayri, acik
+  onayini gerektirir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage14_pretest_freeze_manifest.json`, `stage14_phase_a_final_report.md`
+
+## Stage 14 (Phase B Preparation) — Final Evaluation Infrastructure, Gating & Freeze
+
+### D-165 — Evaluation Package Architecture (Accepted)
+
+- **Question:** Phase B mantigi tek bir buyuk modul mu, yoksa kucuk,
+  tek-sorumluluklu modulller halinde mi organize edilmeli?
+- **Decision:** `labs/lab12/evaluation/` -- 10 kucuk modul
+  (`contracts`, `population`, `baselines`, `metrics`, `acceptance`,
+  `freeze`, `gate`, `runner`, `cli`, `__init__`), her biri tek bir
+  sorumluluk tasir. Gereksiz framework/base-class katmani eklenmedi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `labs/lab12/evaluation/`
+
+### D-166 — Token-Gated Protected Population Access (Accepted)
+
+- **Question:** "pytest/notebook normal calismasi Protected Test'e
+  erisemez" gereksinimi NASIL garanti edilmeli -- convention ile mi,
+  yapisal olarak mi?
+- **Decision:** **Yapisal olarak.** `population.load_protected_population()`,
+  `gate.PreUnlockGate.unlock()`'un urettigi bir `UnlockToken` olmadan
+  CALISMAZ (tip kontrolu + `is_valid()`). Token tek kullanimliktir
+  (`consume()`). Bu, bir sozlesme degil, bir runtime garantisidir --
+  `test_structural_safety.py` ile programatik olarak dogrulandi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `evaluation/population.py`, `evaluation/gate.py`, `tests/stage14_evaluation/test_structural_safety.py`
+
+### D-167 — Feature Aggregation Adapter Gerekli (Stage 13'un D-146'sindan Farkli Kapsam)
+
+- **Question:** Stage 13 (D-146), "feature_adapter.py gereksiz" kararini
+  vermisti -- bu, Phase B icin de gecerli mi?
+- **Evidence:** D-146'nin gerekcesi "canonical input zaten shipment-seviyesinde"
+  idi -- bu, API katmani icin DOGRU (zaten aggregate edilmis JSON alir).
+  Phase B ise HAM, row-level (line-item) veriden baslar.
+- **Decision:** **HAYIR, D-146 burada GECERLI DEGIL.** Evaluation'a ozgu
+  `population.py:resolve_shipment_features`, Stage 07'nin aggregation
+  semantics'ini (numeric->sum, categorical->first) uygular -- bu,
+  Stage 13'un inference contract'ini DEGISTIRMEZ, sadece ondan BIR ADIM
+  ONCESINI (raw->shipment-level) karsilar.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `evaluation/population.py`
+
+### D-168 — High-Cost Threshold: Frozen Constant, Yeniden Hesaplanmadi (Accepted)
+
+- **Question:** 2015 icin high-cost threshold'u, Protected Test'in kendi
+  P90'indan mi hesaplanmali, yoksa Stage 11'in dondurdugu deger mi
+  reuse edilmeli?
+- **Decision:** **Reuse edilmeli.** `HIGH_COST_THRESHOLD_USD = 23897.32`,
+  Stage 11'in 2006-2013 development population'indan (2014 OKUNMADAN
+  ONCE) turettigi, zaten yayinlanmis deger -- "frozen-before-the-period-is-read"
+  politikasi 2015 icin de aynen uygulanir. Test-setinin kendi dagiliminda
+  bir threshold hesaplamak, segment tanimina dolayli bir leakage sokardi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `evaluation/contracts.py`, `stage11_external_validation_results.md` Section 5
+
+### D-169 — Hazirlik Asamasinda Gercek Veriyle Baseline Fitting Yapilmadi (Accepted)
+
+- **Question:** B1/B4 baseline'lari, bu hazirlik asamasinda gercek
+  2006-2013 development population'inda fit edilip sayisal olarak
+  dogrulanmali mi?
+- **Evidence:** Hazirlik asamasinda ham CSV erisimi engellendigi icin
+  gercek development population uzerinde baseline fitting dogrulanamadi.
+- **Decision:** Baseline fitting mantigi (`baselines.py`) KOD OLARAK
+  yazildi ve SADECE sentetik fixture'larla test edildi
+  (`tests/stage14_evaluation/test_baselines.py`, `test_runner.py`).
+  Gercek development population'da fit, Phase B'nin unlock-sonrasi
+  calismasina birakildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `evaluation/baselines.py`, `stage14_evaluation_validation_results.md` Section 5
+
+### D-170 — Teknik Kabul Esikleri: Provisional, Business-SLA DEGIL (Accepted)
+
+- **Question:** Model, Protected Test'te B4'u gectiginde "kabul edildi"
+  diyebilmek icin hangi esik kullanilmali?
+- **Decision:** Uc provisional, muhendislik-seviyesi esik (>=%10 MAE
+  iyilesmesi vs B4, >=%99 validity rate, 2014 referansina +10pp
+  high-cost tolerans) -- ACIKCA "business-approved SLA DEGIL" olarak
+  etiketlendi (`classify_acceptance()` sonucu hicbir zaman `business_approved`/`sla`
+  alani ICERMEZ, test ile dogrulandi).
+- **Status:** Accepted
+- **Confidence:** Medium (esikler, gercek 2015 sonucuyla hicbir zaman
+  kalibre edilmedi -- provisional kalmaya devam ediyor)
+- **Related Artifacts:** `evaluation/acceptance.py`, `stage14_metric_baseline_contract.md` Section 5
+
+### D-171 — Freeze Manifest v2: Supersede Eder, Uzerine Yazmaz (Accepted)
+
+- **Question:** Phase A'nin `stage14_pretest_freeze_manifest.json`'i
+  (v1), Phase B icin yeterli mi?
+- **Evidence:** v1, evaluation code/protocol/baseline/metric/acceptance
+  fingerprint'lerini ICERMIYOR (o an bu kod yoktu).
+- **Decision:** Yeni bir dosya, `stage14_evaluation_freeze_manifest_v2.json`,
+  bu fingerprint'leri ekler ve `supersedes` alaniyla v1'e referans verir.
+  **v1 dosyasi SILINMEDI, UZERINE YAZILMADI** -- audit trail icin
+  korundu.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `evaluation/freeze.py`, `stage14_final_pretest_freeze.md`
+
+### D-172 — Explicit CLI, Bu Asamada Cagrilmadi (Accepted)
+
+- **Question:** "Separate explicit command" gereksinimi nasil implement
+  edilmeli, ve bu asamada test edilmeli mi?
+- **Decision:** `evaluation/cli.py`, `python -m evaluation.cli unlock
+  --confirm-phrase ...` olarak implement edildi. **Bu komut, bu asamada
+  HICBIR SEKILDE calistirilmadi** -- `PreUnlockGate.unlock()`/`run_checks()`
+  bile gercek (`cli.py`'nin) yapilandirmasiyla CAGRILMADI; sadece
+  tamamen sentetik, `tmp_path`-scoped fixture'larla test edildi
+  (`tests/stage14_evaluation/test_gate.py`).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `evaluation/cli.py`, `tests/stage14_evaluation/test_gate.py`
+
+## Stage 14 — Pre-Unlock Audit
+
+### D-175 — Real Development-Only Artifact Parity Verification (Accepted, Gercek Bulgu)
+
+- **Question:** D-169 (Phase B hazirliginda), B1/B4 gercek development
+  verisiyle hic dogrulanamamisti. Bu, HALA cozulemez bir eksiklik mi?
+- **Evidence:** `stage08_fold_statistics.csv`/`stage08_oof_predictions.csv`/`stage08_segment_support.csv`
+  (training-only CV, ham veri DEGIL) ile: B0/B1 formulleri 4/4 fold'da
+  TAM parity (Train_Median/Train_Mean ile exact match); B4'un
+  PARENT_FALLBACK/GLOBAL_FALLBACK degerleri segment_support tablosundaki
+  >=10-support medianlarla TAM eslesti (4/4 fold). Daha da onemlisi:
+  `stage11_baseline_predictions.csv` (gercek 2014, development population'da
+  TEK SEFERLIK fit edilmis B1/B4) + `stage11_external_metrics.csv` ile,
+  `evaluation/metrics.py`'nin TUM 10 metrigi (MAE/RMSE/WAPE/Bias/Median/P90/P95/High-Cost/vb.)
+  **0.000000 fark ile TAM OLARAK** published referans degerleriyle eslesti.
+- **Decision:** Metrics modulu icin gercek-veri parity **TAM OLARAK
+  DOGRULANDI** (ham CSV'ye hic dokunulmadan). Baseline FITTING
+  mantigi icin ise development population'in TEK, full-population
+  fit'i (n=4987) hala bagimsiz olarak yeniden-uretilemedi (ham veri
+  erisimi kisitlamasi devam ediyor) -- ama Stage 11'in zaten yayinladigi
+  `b1.value_usd = 10456.218411870865` frozen referans degeri EXPECTED_B1_DEVELOPMENT_MEAN_USD
+  olarak kaydedildi ve D-174'teki fail-closed kontrol icin kullanildi.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `stage14_pre_unlock_audit_report.md`, `stage08_fold_statistics.csv`, `stage11_baseline_predictions.csv`, `stage11_external_metrics.csv`
+
+### D-174 — Development Population Integrity Check (Accepted)
+
+- **Question:** D-175'te bulunan frozen B1 referans degeri (`10456.218411870865`),
+  Phase B kodunda nasil kullanilmali?
+- **Decision:** `FinalEvaluationRunner`, development population'i yukleyip
+  B1'i fit ettikten SONRA ama Protected Test'i okumadan ONCE, freshly-fit
+  B1 mean'inin bu frozen degerle (1e-6 USD tolerans ile) eslesmesini
+  dogrular. Eslesmezse `DevelopmentPopulationIntegrityError` raise edilir
+  -- **2015 hic okunmaz**. Parametre varsayilani `None`'dir (sentetik
+  testler bu kontrolu atlar); `cli.py` gercek calismada her zaman
+  gercek sabiti gecirir.
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `evaluation/runner.py`, `evaluation/contracts.py`, `tests/stage14_evaluation/test_runner.py`
+
+### D-173 — High-Cost Acceptance Kriteri Revize Edildi (Accepted, Gercek Bulgu)
+
+- **Question:** "2015 high-cost underprediction rate'i, 2014 referansini
+  (%89.93) 10pp'den fazla asamaz" kurali, anlamli bir gate mi?
+- **Evidence:** Metrik %100'de ustten sinirli; 2014 referansi zaten bu
+  tavana yakin; **her iki mevcut baseline (B1, B4) 2014'te ZATEN TAM
+  OLARAK %100 skorluyor**. +10pp tolerans -> %99.93 tavan -- bunu
+  GECMEK icin bir modelin pratik olarak HER high-cost shipment'i
+  underpredict etmesi gerekir (baseline'larin zaten yaptigi sey). Kural
+  neredeyse HER ZAMAN gecer, sifir ayirt edicilik saglar.
+- **Decision:** Kural bir GATING kriteri olmaktan **CIKARILDI**, bir
+  **monitored risk indicator**'a donusturuldu (`high_cost_risk_monitor`,
+  her zaman raporlanir, siniflandirmayi hicbir zaman etkilemez). Yerine,
+  keyfi bir sabit GEREKTIRMEYEN, ayni donem icinde B4'e gore RELATIF bir
+  kriter eklendi: `model_rate < B4_rate` (ayni Protected Test donemi).
+- **Status:** Accepted
+- **Confidence:** Medium (yeni kriter gercek 2015 verisiyle hic
+  calistirilmadi; relative karsilastirma mantiksal olarak daha saglam
+  ama empirik olarak dogrulanmadi)
+- **Related Artifacts:** `evaluation/acceptance.py`, `evaluation/contracts.py`, `stage14_metric_baseline_contract.md` Section 5, `tests/stage14_evaluation/test_acceptance.py`
+
+## Stage 14 — Final Evaluation (2015 Protected Test, One-Time)
+
+### D-176 — Protected Test Executed, ACCEPTED (Accepted, Gercek Sonuc)
+
+- **Question:** M04-T003, kullanicinin acik yetkilendirmesiyle
+  calistirilan TEK SEFERLIK 2015 Protected Test degerlendirmesinde ne
+  sonuc verdi?
+- **Evidence:** `python -m evaluation.cli unlock` ile calistirildi
+  (n_protected_eligible=392). Tum 9 pre-unlock kontrolu + D-174'un B1
+  development-mean integrity check'i (frozen `10456.218411870865` USD
+  ile TAM eslesme) 2015 okunmadan ONCE PASSED. M04-T003 MAE=8540.83 USD,
+  B4'u %30.2 geçti (esik: >=%10), validity %100, high-cost
+  underprediction %80.49 (B4'un ayni donemdeki %100'unden DUSUK) ->
+  **ACCEPTED**.
+- **Decision:** Sonuc, exactly-as-observed raporlandi
+  (`stage14_final_evaluation_report.md`) -- elverissiz bulgu da dahil:
+  Dev-CV->2014 gap (+%14.1) ile 2014->2015 gap (+%31.7) arasinda gercek
+  bir HIZLANMA var (muhtemelen B1/B4'u de ayni oranda etkileyen bir
+  distribution shift, bagimsiz dogrulanmadi). Model bundle SHA-256
+  calistirma oncesi/sonrasi AYNI -- retrain/tune YAPILMADI. Degerlendirme
+  **TEKRAR CALISTIRILMAYACAK** (`AlreadyEvaluatedError` guard'i aktif).
+- **Status:** Accepted
+- **Confidence:** High
+- **Related Artifacts:** `artifacts/stage14_final_evaluation_report.json`, `artifacts/stage14_evaluation_audit_log.json`, `stage14_final_evaluation_report.md`

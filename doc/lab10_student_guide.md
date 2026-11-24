@@ -3,7 +3,7 @@
 Bu rehber, `ml-labs` projesindeki **LAB10: Time Series Fundamentals & Forecasting Baselines**
 çalışmasını kendi bilgisayarınızda Docker üzerinden nasıl çalıştıracağınızı adım adım açıklar.
 
-**Eğitim süresi:** 150 dakika (10 dakikalık mola dahil), artı isteğe bağlı Advanced Challenges
+**Eğitim süresi:** 150 dakika, artı isteğe bağlı Advanced Challenges
 
 > Bu LAB, LAB02-LAB09'dan **farklı bir alana** geçiştir: klasik tabular Machine Learning'den
 > **Time Series Forecasting**'e. LAB08/LAB09'daki dataset'i (DataCo Supply Chain) kullanmaz —
@@ -176,7 +176,7 @@ notebook, Advanced Challenges dahil, genellikle **1 dakikanın altında** tamaml
 3. **Trend, Seasonality & Autocorrelation** (25 dk) — sadece Training Period üzerinde: rolling
    mean, haftalık/aylık pattern, lag 1/7/14/28 autocorrelation (5 görselleştirme).
 4. **Forecasting Problem & Temporal Splitting** (20 dk) — split doğrulama, leakage discussion,
-   split timeline grafiği. **Break (10 dk)** bu section'ın sonundadır.
+   split timeline grafiği.
 5. **Naive & Seasonal Naive Forecasting** (25 dk) — üç baseline fonksiyonu, ilk forecast demo'su
    ve karşılaştırma grafiği.
 6. **Forecasting Metrics & Error Analysis** (20 dk) — MAE/RMSE/WAPE/MASE fonksiyonları, sabit

@@ -3,7 +3,7 @@
 Bu rehber, `ml-labs` projesindeki **LAB02: Python for Machine Learning & Data Manipulation** çalışmasını
 kendi bilgisayarınızda Docker üzerinden nasıl çalıştıracağınızı adım adım açıklar.
 
-**Eğitim süresi:** 150 dakika (10 dakikalık mola dahil)
+**Eğitim süresi:** 150 dakika
 
 ---
 

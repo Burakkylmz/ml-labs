@@ -3,7 +3,7 @@
 Bu rehber, `ml-labs` projesindeki **LAB04: Data Preparation & Preprocessing Pipelines** çalışmasını
 kendi bilgisayarınızda Docker üzerinden nasıl çalıştıracağınızı adım adım açıklar.
 
-**Eğitim süresi:** 150 dakika (10 dakikalık mola dahil)
+**Eğitim süresi:** 150 dakika
 
 > Bu LAB, **LAB02** ve **LAB03**'ün devamıdır. Bu LAB'ları tamamlamadıysanız önce
 > [`doc/lab02_student_guide.md`](lab02_student_guide.md) ve

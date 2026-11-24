@@ -4,7 +4,7 @@ Bu rehber, `ml-labs` projesindeki **LAB08: Feature Engineering, Feature Selectio
 Explainability** çalışmasını kendi bilgisayarınızda Docker üzerinden nasıl çalıştıracağınızı
 adım adım açıklar.
 
-**Eğitim süresi:** 150 dakika (10 dakikalık mola dahil), artı isteğe bağlı Advanced Challenges
+**Eğitim süresi:** 150 dakika, artı isteğe bağlı Advanced Challenges
 
 > Bu LAB, **LAB02-LAB07**'nin devamıdır. Bu LAB'ları tamamlamadıysanız önce
 > [`doc/lab02_student_guide.md`](lab02_student_guide.md), [`doc/lab03_student_guide.md`](lab03_student_guide.md),
@@ -212,8 +212,7 @@ dahil), donanımınıza bağlı olarak **birkaç dakika** sürebilir (SHAP hesap
 3. **Feature Engineering Techniques** (20 dk) — baseline feature set, Date-Time/Cyclical/
    Interaction feature'lar, feature quality validation.
 4. **Feature Selection Methods** (20 dk) — `VarianceThreshold`, correlation analizi,
-   `SelectKBest`, Mutual Information, `SelectFromModel`. **Break (10 dk)** bu section'ın
-   sonundadır.
+   `SelectKBest`, Mutual Information, `SelectFromModel`.
 5. **Comparative Feature Benchmarking** (25 dk) — E01 (Baseline)/E02 (Engineered)/E03 (Selected)
    karşılaştırması, 7 görselleştirme.
 6. **Feature Importance & SHAP Explainability** (25 dk) — Model-Based Importance, Permutation

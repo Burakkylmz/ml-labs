@@ -4,7 +4,7 @@
 
 - **Module:** Supervised Learning — Classification
 - **Session:** 06
-- **Duration:** 150 minutes (including a 10-minute break)
+- **Duration:** 150 minutes
 - **Audience:** Participants who have completed LAB02, LAB03, LAB04, and LAB05
 
 This lab builds on LAB02 (Python/Pandas fundamentals), LAB03 (Statistics & EDA), LAB04
